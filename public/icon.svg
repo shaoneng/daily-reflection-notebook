@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Daily Reflection Notebook">
-  <rect width="128" height="128" rx="28" fill="#18251f"/>
-  <path d="M35 32h45c8 0 13 5 13 13v51H48c-8 0-13-5-13-13V32Z" fill="#f5efe3"/>
-  <path d="M48 47h30M48 62h30M48 77h20" stroke="#d45b3f" stroke-width="7" stroke-linecap="round"/>
-  <path d="M35 32v51c0 8 5 13 13 13" fill="none" stroke="#9ab6a4" stroke-width="7" stroke-linecap="round"/>
+  <rect width="128" height="128" rx="28" fill="#2563eb"/>
+  <path d="M35 32h45c8 0 13 5 13 13v51H48c-8 0-13-5-13-13V32Z" fill="#ffffff"/>
+  <path d="M48 47h30M48 62h30M48 77h20" stroke="#0f766e" stroke-width="7" stroke-linecap="round"/>
+  <path d="M35 32v51c0 8 5 13 13 13" fill="none" stroke="#f59e0b" stroke-width="7" stroke-linecap="round"/>
 </svg>
