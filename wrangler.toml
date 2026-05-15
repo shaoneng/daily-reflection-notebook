@@ -1,0 +1,8 @@
+name = "daily-reflection-notebook"
+compatibility_date = "2026-05-15"
+pages_build_output_dir = "public"
+
+[[kv_namespaces]]
+binding = "NOTES_KV"
+id = "replace_with_production_kv_namespace_id"
+preview_id = "replace_with_preview_kv_namespace_id"
