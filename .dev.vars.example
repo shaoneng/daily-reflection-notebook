@@ -1,0 +1,15 @@
+# Optional but strongly recommended after deployment.
+# When set, the web app must send this value as a Bearer token.
+APP_PASSWORD=change-me
+
+# DeepSeek is the preferred AI provider for this project.
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-v4-pro
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+
+# Optional fallback: Cloudflare Workers AI can be bound from the dashboard as AI.
+WORKERS_AI_MODEL=@cf/meta/llama-3.1-8b-instruct
+
+# Optional fallback. Set both values if you prefer OpenAI.
+OPENAI_API_KEY=
+OPENAI_MODEL=
