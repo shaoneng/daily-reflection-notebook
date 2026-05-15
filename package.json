@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A mobile-first daily Markdown journal with AI-assisted reflection, deployable on Cloudflare Workers.",
+  "description": "A mobile-first daily Markdown journal with AI-assisted reflection, deployable on Cloudflare Pages.",
   "scripts": {
     "dev": "wrangler dev --port 8788",
     "deploy": "wrangler deploy",
-    "check": "node --check src/worker.js && node --check functions/api/day/index.js && node --check functions/api/review/index.js && node --check functions/api/search/index.js && node --check functions/api/export/index.js && node --check functions/api/tags/index.js"
+    "check": "node --check src/worker.js && node --check functions/api/day/index.js && node --check functions/api/activity/index.js && node --check functions/api/review/index.js && node --check functions/api/search/index.js && node --check functions/api/export/index.js && node --check functions/api/tags/index.js"
   },
   "devDependencies": {
     "wrangler": "^4.15.0"
