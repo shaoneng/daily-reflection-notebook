@@ -1,6 +1,7 @@
 const state = {
   selectedDate: toLocalDate(new Date()),
   calendarMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  activityYear: new Date().getFullYear(),
   password: localStorage.getItem("dailyNotebookPassword") || "",
 };
 
@@ -11,6 +12,12 @@ const els = {
   selectedDateLabel: document.querySelector("#selectedDateLabel"),
   calendarMonthLabel: document.querySelector("#calendarMonthLabel"),
   calendarGrid: document.querySelector("#calendarGrid"),
+  activityYearLabel: document.querySelector("#activityYearLabel"),
+  activityMonths: document.querySelector("#activityMonths"),
+  activityGrid: document.querySelector("#activityGrid"),
+  activitySummary: document.querySelector("#activitySummary"),
+  prevYearButton: document.querySelector("#prevYearButton"),
+  nextYearButton: document.querySelector("#nextYearButton"),
   prevMonthButton: document.querySelector("#prevMonthButton"),
   nextMonthButton: document.querySelector("#nextMonthButton"),
   saveEntryButtons: document.querySelectorAll(".save-entry-button"),
@@ -37,6 +44,7 @@ function init() {
   bindEvents();
   renderCalendar();
   refreshDay();
+  refreshActivity();
 }
 
 function bindEvents() {
@@ -66,6 +74,19 @@ function bindEvents() {
     state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth() + 1, 1);
     renderCalendar();
   });
+  els.prevYearButton.addEventListener("click", () => {
+    state.activityYear -= 1;
+    refreshActivity();
+  });
+  els.nextYearButton.addEventListener("click", () => {
+    state.activityYear += 1;
+    refreshActivity();
+  });
+  els.activityGrid.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-activity-date]");
+    if (!button || button.disabled) return;
+    selectDate(button.dataset.activityDate);
+  });
   els.timelineList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-entry-index]");
     if (!button) return;
@@ -87,8 +108,10 @@ function selectDate(date) {
   els.datePicker.value = date;
   const selected = parseDate(date);
   state.calendarMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
+  state.activityYear = selected.getFullYear();
   renderCalendar();
   refreshDay();
+  refreshActivity();
 }
 
 async function exportMarkdown(event) {
@@ -155,6 +178,7 @@ async function saveEntryFromCard(card) {
     renderDay(data.markdown);
     textarea.value = "";
     setStatus(`已保存 ${payload.time}`);
+    refreshActivity();
   } catch (error) {
     showError(error);
   } finally {
@@ -179,6 +203,7 @@ async function deleteEntry(entryIndex) {
     });
     renderDay(data.markdown);
     setStatus("已删除");
+    refreshActivity();
   } catch (error) {
     showError(error);
   } finally {
@@ -226,6 +251,16 @@ async function api(path, options = {}) {
   return data;
 }
 
+async function refreshActivity() {
+  els.activityYearLabel.textContent = `${state.activityYear} 年`;
+  try {
+    const data = await api(`/api/activity?year=${encodeURIComponent(state.activityYear)}`);
+    renderActivity(data);
+  } catch (error) {
+    els.activitySummary.textContent = error.message;
+  }
+}
+
 function renderCalendar() {
   const year = state.calendarMonth.getFullYear();
   const month = state.calendarMonth.getMonth();
@@ -250,6 +285,58 @@ function renderCalendar() {
     `;
   });
   els.calendarGrid.innerHTML = days.join("");
+}
+
+function renderActivity(data) {
+  const year = data.year || state.activityYear;
+  state.activityYear = year;
+  els.activityYearLabel.textContent = `${year} 年`;
+  els.activitySummary.textContent = data.totalEntries
+    ? `${data.totalDays} 天有记录，共 ${data.totalEntries} 条`
+    : "这一年还没有记录";
+
+  const countByDate = new Map((data.days || []).map((day) => [day.date, day.count]));
+  const startOfYear = new Date(year, 0, 1);
+  const endOfYear = new Date(year, 11, 31);
+  const start = new Date(startOfYear);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const end = new Date(endOfYear);
+  end.setDate(end.getDate() + (6 - ((end.getDay() + 6) % 7)));
+  const dayCount = Math.round((end - start) / 86400000) + 1;
+  const weekCount = Math.ceil(dayCount / 7);
+  const today = toLocalDate(new Date());
+
+  els.activityMonths.style.setProperty("--activity-weeks", weekCount);
+  els.activityGrid.style.setProperty("--activity-weeks", weekCount);
+  els.activityMonths.innerHTML = renderActivityMonths(year, start);
+  els.activityGrid.innerHTML = Array.from({ length: dayCount }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const value = toLocalDate(date);
+    const isCurrentYear = date.getFullYear() === year;
+    const count = countByDate.get(value) || 0;
+    const level = activityLevel(count);
+    return `
+      <button class="activity-day${value === state.selectedDate ? " selected" : ""}${value === today ? " today" : ""}" type="button" data-level="${level}" data-activity-date="${value}" ${isCurrentYear ? "" : "disabled"} aria-label="${value}，${count} 条记录" title="${value}：${count} 条记录"></button>
+    `;
+  }).join("");
+}
+
+function renderActivityMonths(year, start) {
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return monthNames.map((name, month) => {
+    const monthStart = new Date(year, month, 1);
+    const column = Math.floor((monthStart - start) / 86400000 / 7) + 1;
+    return `<span style="grid-column: ${column} / span 4;">${name}</span>`;
+  }).join("");
+}
+
+function activityLevel(count) {
+  if (!count) return 0;
+  if (count === 1) return 1;
+  if (count === 2) return 2;
+  if (count <= 4) return 3;
+  return 4;
 }
 
 function renderDay(markdown) {
