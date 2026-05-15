@@ -7,6 +7,7 @@ import {
   getStore,
   json,
   noteKey,
+  removeEntryAt,
   validateDate,
 } from "../../_shared.js";
 
@@ -45,6 +46,37 @@ export async function onRequestPost(context) {
     timezone: body.timezone || "local",
     content: body.content,
   });
+
+  await store.put(key, markdown);
+  await addDateToIndex(store, body.date);
+
+  return json({
+    date: body.date,
+    markdown,
+  });
+}
+
+export async function onRequestDelete(context) {
+  const authError = assertAuthorized(context);
+  if (authError) return authError;
+
+  const body = await context.request.json().catch(() => null);
+  if (!body || !validateDate(body.date)) return error("日期格式必须是 YYYY-MM-DD。");
+
+  const entryIndex = Number(body.entryIndex);
+  if (!Number.isInteger(entryIndex) || entryIndex < 0) return error("记录序号不正确。");
+
+  const store = getStore(context);
+  const key = noteKey(body.date);
+  const current = await store.get(key);
+  if (!current) return error("当天还没有记录。", 404);
+
+  let markdown;
+  try {
+    markdown = removeEntryAt(current, body.date, entryIndex);
+  } catch (deleteError) {
+    return error(deleteError.message || "删除记录失败。", 404);
+  }
 
   await store.put(key, markdown);
   await addDateToIndex(store, body.date);
