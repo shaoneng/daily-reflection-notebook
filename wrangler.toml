@@ -9,5 +9,5 @@ run_worker_first = ["/api/*"]
 
 [[kv_namespaces]]
 binding = "NOTES_KV"
-id = "replace_with_production_kv_namespace_id"
-preview_id = "replace_with_preview_kv_namespace_id"
+id = "c751469c22794cf8a13c270c7b69318e"
+preview_id = "c751469c22794cf8a13c270c7b69318e"
