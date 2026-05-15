@@ -779,3 +779,9 @@ dialog::backdrop {
     flex-direction: column;
   }
 }
+
+@media (max-width: 640px) {
+  .activity-panel {
+    display: none;
+  }
+}
