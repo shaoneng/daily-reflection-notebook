@@ -20,6 +20,8 @@ const els = {
   markdownView: document.querySelector("#markdownView"),
   noteTitle: document.querySelector("#noteTitle"),
   exportLink: document.querySelector("#exportLink"),
+  reviewButton: document.querySelector("#reviewButton"),
+  reviewOutput: document.querySelector("#reviewOutput"),
   settingsButton: document.querySelector("#settingsButton"),
   settingsDialog: document.querySelector("#settingsDialog"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -41,6 +43,7 @@ function bindEvents() {
   els.saveEntryButtons.forEach((button) => {
     button.addEventListener("click", () => saveEntryFromCard(button.closest(".entry-card")));
   });
+  els.reviewButton.addEventListener("click", runReview);
   document.querySelectorAll(".entry-input").forEach((textarea) => {
     textarea.addEventListener("keydown", (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") saveEntryFromCard(textarea.closest(".entry-card"));
@@ -183,6 +186,28 @@ async function deleteEntry(entryIndex) {
   }
 }
 
+async function runReview() {
+  setBusy(true);
+  setStatus("复盘中");
+  els.reviewOutput.innerHTML = "<p>正在复盘今日记录...</p>";
+  try {
+    const data = await api("/api/review", {
+      method: "POST",
+      body: JSON.stringify({
+        date: state.selectedDate,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "local",
+      }),
+    });
+    renderReview(data.review);
+    renderDay(data.markdown);
+    setStatus("复盘完成");
+  } catch (error) {
+    showReviewError(error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function api(path, options = {}) {
   const headers = {
     "content-type": "application/json",
@@ -229,12 +254,18 @@ function renderCalendar() {
 
 function renderDay(markdown) {
   const entries = parseEntries(markdown);
+  const review = parseLatestReview(markdown);
   els.markdownView.textContent = markdown;
   els.entryCount.textContent = `${entries.length} 条记录`;
   els.lastSavedAt.textContent = entries.length ? `最近 ${entries.at(-1).time}` : "还没有开始";
   els.timelineList.innerHTML = entries.length
     ? entries.map(renderTimelineItem).join("")
     : '<div class="empty-state">这一天还没有记录。先在上面的输入框写一条。</div>';
+  if (review) {
+    renderReview(review);
+  } else {
+    resetReviewOutput();
+  }
 }
 
 function renderTimelineItem(entry) {
@@ -293,6 +324,51 @@ function formatEntryTime(heading) {
   return match ? match[0] : heading;
 }
 
+function parseLatestReview(markdown) {
+  const reviewIndex = markdown.lastIndexOf("## AI 复盘");
+  if (reviewIndex === -1) return "";
+  return markdown.slice(reviewIndex).replace(/^## AI 复盘[^\n]*\n?/, "").trim();
+}
+
+function renderReview(markdown) {
+  els.reviewOutput.innerHTML = markdownToHtml(markdown);
+}
+
+function resetReviewOutput() {
+  els.reviewOutput.innerHTML = "<p>还没有生成复盘。</p>";
+}
+
+function markdownToHtml(markdown) {
+  const lines = markdown.split("\n");
+  let html = "";
+  let inList = false;
+
+  for (const line of lines) {
+    if (line.startsWith("### ")) {
+      if (inList) {
+        html += "</ul>";
+        inList = false;
+      }
+      html += `<h4>${escapeHtml(line.slice(4))}</h4>`;
+    } else if (line.startsWith("- ")) {
+      if (!inList) {
+        html += "<ul>";
+        inList = true;
+      }
+      html += `<li>${escapeHtml(line.slice(2))}</li>`;
+    } else if (line.trim()) {
+      if (inList) {
+        html += "</ul>";
+        inList = false;
+      }
+      html += `<p>${escapeHtml(line)}</p>`;
+    }
+  }
+
+  if (inList) html += "</ul>";
+  return html || "<p>还没有生成复盘。</p>";
+}
+
 function extractTags(content) {
   return Array.from(new Set(content.match(/#[^\s#，。,.；;！!？?、）)（(]+/g) || []));
 }
@@ -301,6 +377,7 @@ function setBusy(isBusy) {
   els.saveEntryButtons.forEach((button) => {
     button.disabled = isBusy;
   });
+  els.reviewButton.disabled = isBusy;
   els.timelineList.querySelectorAll("[data-entry-index]").forEach((button) => {
     button.disabled = isBusy;
   });
@@ -315,6 +392,12 @@ function showError(error) {
   setStatus("出错");
   els.timelineList.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
   els.markdownView.textContent = error.message;
+}
+
+function showReviewError(error) {
+  console.error(error);
+  setStatus("出错");
+  els.reviewOutput.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
 }
 
 function emptyMarkdown(date) {
