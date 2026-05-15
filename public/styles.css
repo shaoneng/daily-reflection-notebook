@@ -123,6 +123,13 @@ dialog {
 .record-workspace {
   display: grid;
   gap: 16px;
+  min-width: 0;
+}
+
+.input-panel,
+.activity-panel,
+.day-panel {
+  min-width: 0;
 }
 
 .panel-heading {
