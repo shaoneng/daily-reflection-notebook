@@ -1,0 +1,391 @@
+:root {
+  color-scheme: light;
+  --ink: #18251f;
+  --muted: #667066;
+  --paper: #f7f4ee;
+  --surface: #fffaf1;
+  --line: #ded6c7;
+  --accent: #d45b3f;
+  --accent-2: #648e74;
+  --gold: #c59a42;
+  --shadow: 0 20px 60px rgba(24, 37, 31, 0.12);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, rgba(212, 91, 63, 0.12), transparent 34%),
+    linear-gradient(220deg, rgba(100, 142, 116, 0.16), transparent 42%),
+    var(--paper);
+  color: var(--ink);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: max(12px, env(safe-area-inset-top)) 0 20px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(28px, 5vw, 48px);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+h2 {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.date-line,
+.section-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.composer-panel,
+.note-panel,
+.review-panel,
+.search-panel,
+dialog {
+  background: rgba(255, 250, 241, 0.92);
+  border: 1px solid rgba(222, 214, 199, 0.9);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.composer-panel,
+.note-panel,
+.review-panel,
+.search-panel {
+  padding: 16px;
+}
+
+.composer-panel {
+  position: sticky;
+  top: 12px;
+}
+
+.review-panel,
+.search-panel {
+  grid-column: 1 / -1;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(100, 142, 116, 0.12);
+  color: #315f42;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+textarea {
+  width: 100%;
+  min-height: 250px;
+  resize: vertical;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: var(--ink);
+  line-height: 1.65;
+  outline: none;
+}
+
+textarea:focus,
+input:focus {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 4px rgba(100, 142, 116, 0.15);
+}
+
+.composer-actions,
+.search-row,
+.compact-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.composer-actions {
+  margin-top: 12px;
+}
+
+button,
+.icon-link {
+  border: 0;
+  cursor: pointer;
+}
+
+.primary-button,
+.secondary-button,
+.icon-button,
+.icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.primary-button,
+.secondary-button {
+  gap: 8px;
+  padding: 0 16px;
+  font-weight: 850;
+}
+
+.primary-button {
+  background: var(--ink);
+  color: #fffaf1;
+}
+
+.secondary-button {
+  background: rgba(212, 91, 63, 0.14);
+  color: #8e321f;
+}
+
+.icon-button,
+.icon-link {
+  width: 44px;
+  background: rgba(24, 37, 31, 0.08);
+  color: var(--ink);
+}
+
+.icon-button.dark {
+  background: var(--ink);
+  color: #fffaf1;
+  flex: 0 0 auto;
+}
+
+button:hover,
+.icon-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(24, 37, 31, 0.13);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+  box-shadow: none;
+}
+
+svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.markdown-view {
+  min-height: 360px;
+  max-height: 62vh;
+  overflow: auto;
+  margin: 0;
+  padding: 16px;
+  border-radius: 8px;
+  background: #fffdf8;
+  border: 1px solid var(--line);
+  color: #25322b;
+  font: 14px/1.72 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: var(--ink);
+  outline: none;
+}
+
+input[type="date"] {
+  width: 148px;
+}
+
+.review-output {
+  display: grid;
+  gap: 12px;
+  min-height: 128px;
+  padding: 16px;
+  border-radius: 8px;
+  background: #fffdf8;
+  border: 1px solid var(--line);
+  line-height: 1.68;
+}
+
+.review-output h3 {
+  margin: 8px 0 2px;
+  font-size: 16px;
+}
+
+.review-output ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.search-row input {
+  width: 100%;
+}
+
+.tag-list,
+.search-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tag-button,
+.result-item {
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  color: var(--ink);
+}
+
+.tag-button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-weight: 800;
+}
+
+.result-item {
+  width: 100%;
+  padding: 12px;
+  line-height: 1.55;
+}
+
+.result-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+dialog {
+  width: min(420px, calc(100% - 28px));
+  padding: 0;
+}
+
+dialog::backdrop {
+  background: rgba(24, 37, 31, 0.35);
+}
+
+.dialog-body {
+  padding: 16px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+#passwordInput {
+  width: 100%;
+}
+
+.full-width {
+  width: 100%;
+  margin-top: 12px;
+}
+
+@media (max-width: 780px) {
+  .app-shell {
+    padding: 14px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .composer-panel {
+    position: static;
+  }
+
+  textarea {
+    min-height: 210px;
+  }
+
+  .composer-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .primary-button,
+  .secondary-button {
+    padding: 0 12px;
+  }
+
+  .compact-actions {
+    gap: 8px;
+  }
+
+  input[type="date"] {
+    width: 132px;
+  }
+
+  .markdown-view {
+    max-height: none;
+  }
+}
