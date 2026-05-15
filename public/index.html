@@ -80,6 +80,18 @@
               <span id="entryCount">0 条记录</span>
               <span id="lastSavedAt">今天还没有开始</span>
             </div>
+            <section class="review-card" aria-labelledby="reviewTitle">
+              <div class="review-head">
+                <h3 id="reviewTitle">AI 复盘</h3>
+                <button class="primary-button" id="reviewButton" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 9.7 8.2 4.5 10.5l5.2 2.3L12 18l2.3-5.2 5.2-2.3-5.2-2.3L12 3Z"/><path d="M19 16l-.8 1.8L16.5 18.5l1.7.7L19 21l.8-1.8 1.7-.7-1.7-.7L19 16Z"/></svg>
+                  生成复盘
+                </button>
+              </div>
+              <div class="review-output" id="reviewOutput">
+                <p>还没有生成复盘。</p>
+              </div>
+            </section>
             <div class="timeline-list" id="timelineList">
               <div class="empty-state">正在读取记录...</div>
             </div>
