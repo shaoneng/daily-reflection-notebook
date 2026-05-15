@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#18251f">
+    <title>每日记录及复盘笔记本</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="date-line" id="todayLabel">今天</p>
+          <h1>每日记录及复盘笔记本</h1>
+        </div>
+        <button class="icon-button" id="settingsButton" type="button" aria-label="设置访问口令" title="设置">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.05.05a2.1 2.1 0 0 1-2.97 2.97l-.05-.05a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.65v.16a2.1 2.1 0 1 1-4.2 0v-.08A1.8 1.8 0 0 0 8.4 19.6a1.8 1.8 0 0 0-1.98.36l-.05.05a2.1 2.1 0 0 1-2.97-2.97l.05-.05A1.8 1.8 0 0 0 3.8 15a1.8 1.8 0 0 0-1.65-1.1H2.1a2.1 2.1 0 1 1 0-4.2h.08A1.8 1.8 0 0 0 3.8 8.6a1.8 1.8 0 0 0-.36-1.98l-.05-.05A2.1 2.1 0 1 1 6.36 3.6l.05.05a1.8 1.8 0 0 0 1.98.36 1.8 1.8 0 0 0 1.1-1.65V2.1a2.1 2.1 0 1 1 4.2 0v.08a1.8 1.8 0 0 0 1.1 1.65 1.8 1.8 0 0 0 1.98-.36l.05-.05a2.1 2.1 0 1 1 2.97 2.97l-.05.05A1.8 1.8 0 0 0 19.4 8.6a1.8 1.8 0 0 0 1.65 1.1h.16a2.1 2.1 0 1 1 0 4.2h-.08A1.8 1.8 0 0 0 19.4 15Z"/></svg>
+        </button>
+      </header>
+
+      <main class="workspace">
+        <section class="composer-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">快速记录</p>
+              <h2>随时写一条</h2>
+            </div>
+            <span class="status-pill" id="syncStatus">未同步</span>
+          </div>
+          <textarea id="entryInput" placeholder="今天发生了什么？做了什么？卡在哪里？下一步想到什么？支持 #标签"></textarea>
+          <div class="composer-actions">
+            <button class="primary-button" id="saveButton" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+              保存
+            </button>
+            <button class="secondary-button" id="reviewButton" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.72 5.3H19l-4.26 3.1 1.63 5.02L12 13.3l-4.37 3.12 1.63-5.02L5 8.3h5.28L12 3Z"/><path d="M4 21h16"/></svg>
+              复盘
+            </button>
+          </div>
+        </section>
+
+        <section class="note-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">今日 Markdown</p>
+              <h2 id="noteTitle">加载中</h2>
+            </div>
+            <div class="compact-actions">
+              <input id="datePicker" type="date" aria-label="选择日期">
+              <a class="icon-link" id="exportLink" href="#" aria-label="导出 Markdown" title="导出">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+              </a>
+            </div>
+          </div>
+          <pre class="markdown-view" id="markdownView">正在读取今天的记录...</pre>
+        </section>
+
+        <section class="review-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">AI 辅助复盘</p>
+              <h2>今天在干嘛</h2>
+            </div>
+          </div>
+          <div class="review-output" id="reviewOutput">
+            <p>点击“复盘”后，会根据当天 Markdown 生成：事实摘要、行动主线、卡点、情绪/能量、下一步。</p>
+          </div>
+        </section>
+
+        <section class="search-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label">查找</p>
+              <h2>标签与搜索</h2>
+            </div>
+          </div>
+          <div class="search-row">
+            <input id="searchInput" type="search" placeholder="搜索内容或 #标签">
+            <button class="icon-button dark" id="searchButton" type="button" aria-label="搜索" title="搜索">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </button>
+          </div>
+          <div class="tag-list" id="tagList"></div>
+          <div class="search-results" id="searchResults"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="settingsDialog">
+      <form method="dialog" class="dialog-body">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">设置</p>
+            <h2>访问口令</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="submit" aria-label="关闭" title="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <label class="field-label" for="passwordInput">Cloudflare 环境变量 APP_PASSWORD</label>
+        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="输入访问口令">
+        <button class="primary-button full-width" id="savePasswordButton" value="default" type="submit">保存口令</button>
+      </form>
+    </dialog>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
