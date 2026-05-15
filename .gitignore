@@ -1,7 +1,9 @@
 .DS_Store
+.DerivedData/
 node_modules/
 .wrangler/
 .dev.vars
+*.bundle
 .claude/settings.local.json
 .learnings/
 dist/
