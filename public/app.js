@@ -9,6 +9,9 @@ const els = {
   entryInput: document.querySelector("#entryInput"),
   saveButton: document.querySelector("#saveButton"),
   reviewButton: document.querySelector("#reviewButton"),
+  timelineList: document.querySelector("#timelineList"),
+  entryCount: document.querySelector("#entryCount"),
+  lastSavedAt: document.querySelector("#lastSavedAt"),
   markdownView: document.querySelector("#markdownView"),
   noteTitle: document.querySelector("#noteTitle"),
   datePicker: document.querySelector("#datePicker"),
@@ -18,6 +21,8 @@ const els = {
   searchButton: document.querySelector("#searchButton"),
   searchResults: document.querySelector("#searchResults"),
   tagList: document.querySelector("#tagList"),
+  tabButtons: document.querySelectorAll("[data-view-target]"),
+  viewPanels: document.querySelectorAll("[data-view-panel]"),
   settingsButton: document.querySelector("#settingsButton"),
   settingsDialog: document.querySelector("#settingsDialog"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -45,10 +50,14 @@ function bindEvents() {
   els.datePicker.addEventListener("change", () => {
     state.selectedDate = els.datePicker.value || toLocalDate(new Date());
     refreshDay();
+    activateView("today");
   });
   els.searchButton.addEventListener("click", runSearch);
   els.searchInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") runSearch();
+  });
+  els.entryInput.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") saveEntry();
   });
   els.searchResults.addEventListener("click", (event) => {
     const button = event.target.closest("[data-date]");
@@ -56,6 +65,10 @@ function bindEvents() {
     state.selectedDate = button.dataset.date;
     els.datePicker.value = state.selectedDate;
     refreshDay();
+    activateView("today");
+  });
+  els.tabButtons.forEach((button) => {
+    button.addEventListener("click", () => activateView(button.dataset.viewTarget));
   });
   els.settingsButton.addEventListener("click", () => {
     els.passwordInput.value = state.password;
@@ -98,7 +111,7 @@ async function refreshDay() {
   els.exportLink.href = `/api/export?date=${encodeURIComponent(state.selectedDate)}`;
   try {
     const data = await api(`/api/day?date=${encodeURIComponent(state.selectedDate)}`);
-    els.markdownView.textContent = data.markdown || emptyMarkdown(state.selectedDate);
+    renderDay(data.markdown || emptyMarkdown(state.selectedDate));
     setStatus(data.exists ? "已同步" : "新日期");
   } catch (error) {
     showError(error);
@@ -114,6 +127,7 @@ async function saveEntry() {
   }
 
   setBusy(true);
+  setStatus("保存中");
   try {
     const now = new Date();
     const payload = {
@@ -128,9 +142,10 @@ async function saveEntry() {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    els.markdownView.textContent = data.markdown;
+    renderDay(data.markdown);
     els.entryInput.value = "";
-    setStatus("已保存");
+    setStatus(`已保存 ${payload.time}`);
+    activateView("today");
     refreshTags();
   } catch (error) {
     showError(error);
@@ -141,7 +156,8 @@ async function saveEntry() {
 
 async function runReview() {
   setBusy(true);
-  els.reviewOutput.innerHTML = "<p>正在复盘今天的 Markdown...</p>";
+  activateView("review");
+  els.reviewOutput.innerHTML = "<p>正在复盘今天的记录...</p>";
   try {
     const data = await api("/api/review", {
       method: "POST",
@@ -150,8 +166,8 @@ async function runReview() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "local",
       }),
     });
-    els.reviewOutput.innerHTML = markdownToHtml(data.review);
-    els.markdownView.textContent = data.markdown;
+    renderReview(data.review);
+    renderDay(data.markdown, { keepReview: true });
     setStatus("复盘完成");
   } catch (error) {
     showError(error);
@@ -164,6 +180,7 @@ async function runReview() {
 async function runSearch(queryOverride) {
   const q = (queryOverride || els.searchInput.value).trim();
   if (!q) return;
+  activateView("search");
   try {
     const data = await api(`/api/search?q=${encodeURIComponent(q)}`);
     els.searchResults.innerHTML = data.results.length
@@ -210,6 +227,82 @@ async function api(path, options = {}) {
   return data;
 }
 
+function renderDay(markdown, options = {}) {
+  const entries = parseEntries(markdown);
+  const review = parseLatestReview(markdown);
+  els.markdownView.textContent = markdown;
+  els.entryCount.textContent = `${entries.length} 条记录`;
+  els.lastSavedAt.textContent = entries.length ? `最近 ${entries.at(-1).time}` : "今天还没有开始";
+  els.timelineList.innerHTML = entries.length
+    ? entries.map(renderTimelineItem).join("")
+    : '<div class="empty-state">还没有记录。先在左侧写一条，今天就开始有形状了。</div>';
+  if (review && !options.keepReview) renderReview(review);
+}
+
+function renderTimelineItem(entry) {
+  const tags = extractTags(entry.content);
+  return `
+    <article class="timeline-item">
+      <time class="timeline-time">${escapeHtml(entry.time)}</time>
+      <div class="timeline-content">
+        <p>${escapeHtml(entry.content)}</p>
+        ${tags.length ? `<div class="inline-tags">${tags.map((tag) => `<span class="inline-tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function parseEntries(markdown) {
+  const lines = markdown.split("\n");
+  const entries = [];
+  let current = null;
+
+  for (const line of lines) {
+    const heading = line.match(/^##\s+(.+)$/);
+    if (heading) {
+      if (current) entries.push(normalizeEntry(current));
+      if (heading[1].startsWith("AI 复盘")) {
+        current = null;
+        break;
+      }
+      current = { heading: heading[1], lines: [] };
+      continue;
+    }
+    if (!current || line.trim() === "---") continue;
+    current.lines.push(line);
+  }
+
+  if (current) entries.push(normalizeEntry(current));
+  return entries.filter((entry) => entry.content);
+}
+
+function normalizeEntry(entry) {
+  const content = entry.lines.join("\n").trim();
+  return {
+    time: formatEntryTime(entry.heading),
+    content,
+  };
+}
+
+function formatEntryTime(heading) {
+  const match = heading.match(/\d{2}:\d{2}/);
+  return match ? match[0] : heading;
+}
+
+function parseLatestReview(markdown) {
+  const reviewIndex = markdown.lastIndexOf("## AI 复盘");
+  if (reviewIndex === -1) return "";
+  return markdown.slice(reviewIndex).replace(/^## AI 复盘[^\n]*\n?/, "").trim();
+}
+
+function renderReview(markdown) {
+  els.reviewOutput.innerHTML = markdownToHtml(markdown);
+}
+
+function extractTags(content) {
+  return Array.from(new Set(content.match(/#[^\s#，。,.；;！!？?、）)（(]+/g) || []));
+}
+
 function renderResult(result) {
   return `
     <button class="result-item" type="button" data-date="${escapeAttr(result.date)}">
@@ -248,6 +341,15 @@ function markdownToHtml(markdown) {
   return html || "<p>没有复盘内容。</p>";
 }
 
+function activateView(name) {
+  els.tabButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.viewTarget === name);
+  });
+  els.viewPanels.forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.viewPanel === name);
+  });
+}
+
 function setBusy(isBusy) {
   els.saveButton.disabled = isBusy;
   els.reviewButton.disabled = isBusy;
@@ -260,6 +362,7 @@ function setStatus(message) {
 function showError(error) {
   console.error(error);
   setStatus("出错");
+  els.timelineList.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
   els.markdownView.textContent = error.message;
 }
 
