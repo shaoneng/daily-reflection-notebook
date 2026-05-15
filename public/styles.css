@@ -781,6 +781,7 @@ dialog::backdrop {
 }
 
 @media (max-width: 640px) {
+  .calendar-panel,
   .activity-panel {
     display: none;
   }
