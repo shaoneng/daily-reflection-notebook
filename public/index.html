@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#f6f3ed">
-    <title>每日记录及复盘笔记本</title>
+    <title>每日记录笔记本</title>
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css">
@@ -14,7 +14,7 @@
       <header class="topbar">
         <div>
           <p class="date-line" id="todayLabel">今天</p>
-          <h1>每日记录及复盘笔记本</h1>
+          <h1>每日记录笔记本</h1>
         </div>
         <div class="top-actions">
           <span class="status-pill" id="syncStatus">未同步</span>
@@ -24,86 +24,100 @@
         </div>
       </header>
 
-      <nav class="mobile-tabs" aria-label="移动端视图">
-        <button class="tab-button active" type="button" data-view-target="today">今天</button>
-        <button class="tab-button" type="button" data-view-target="review">复盘</button>
-        <button class="tab-button" type="button" data-view-target="search">搜索</button>
-      </nav>
-
       <main class="workspace">
-        <section class="composer-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="section-label">快速记录</p>
-              <h2>写下现在这一条</h2>
+        <aside class="calendar-panel" aria-label="日期选择">
+          <div class="calendar-card">
+            <div class="calendar-head">
+              <button class="icon-button compact" id="prevMonthButton" type="button" aria-label="上个月" title="上个月">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <h2 id="calendarMonthLabel">本月</h2>
+              <button class="icon-button compact" id="nextMonthButton" type="button" aria-label="下个月" title="下个月">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
             </div>
+            <div class="calendar-weekdays" aria-hidden="true">
+              <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+            <input id="datePicker" type="date" aria-label="选择日期">
           </div>
-          <textarea id="entryInput" placeholder="发生了什么？做了什么？卡在哪里？下一步是什么？支持 #标签"></textarea>
-          <div class="composer-actions">
-            <button class="primary-button" id="saveButton" type="button">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
-              保存
-            </button>
-            <button class="secondary-button" id="reviewButton" type="button">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.72 5.3H19l-4.26 3.1 1.63 5.02L12 13.3l-4.37 3.12 1.63-5.02L5 8.3h5.28L12 3Z"/><path d="M4 21h16"/></svg>
-              复盘
-            </button>
-          </div>
-        </section>
+        </aside>
 
-        <section class="day-panel view-panel active" data-view-panel="today">
-          <div class="panel-heading">
-            <div>
-              <p class="section-label">今日记录</p>
-              <h2 id="noteTitle">加载中</h2>
+        <section class="record-workspace">
+          <section class="input-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="section-label">记录输入</p>
+                <h2 id="selectedDateLabel">今天</h2>
+              </div>
             </div>
-            <div class="compact-actions">
-              <input id="datePicker" type="date" aria-label="选择日期">
+            <div class="input-grid">
+              <article class="entry-card">
+                <div class="entry-card-head">
+                  <h3>发生了什么</h3>
+                  <button class="primary-button save-entry-button" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                    保存
+                  </button>
+                </div>
+                <textarea class="entry-input" placeholder="把刚发生的事情写下来，支持 #标签"></textarea>
+              </article>
+              <article class="entry-card">
+                <div class="entry-card-head">
+                  <h3>做了什么</h3>
+                  <button class="primary-button save-entry-button" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                    保存
+                  </button>
+                </div>
+                <textarea class="entry-input" placeholder="记录完成的动作、沟通、决定或输出"></textarea>
+              </article>
+              <article class="entry-card">
+                <div class="entry-card-head">
+                  <h3>卡在哪里</h3>
+                  <button class="primary-button save-entry-button" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                    保存
+                  </button>
+                </div>
+                <textarea class="entry-input" placeholder="问题、阻碍、不确定、需要别人帮忙的地方"></textarea>
+              </article>
+              <article class="entry-card">
+                <div class="entry-card-head">
+                  <h3>下一步</h3>
+                  <button class="primary-button save-entry-button" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                    保存
+                  </button>
+                </div>
+                <textarea class="entry-input" placeholder="写一个可以马上开始的下一步"></textarea>
+              </article>
+            </div>
+          </section>
+
+          <section class="day-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="section-label">今日记录</p>
+                <h2 id="noteTitle">加载中</h2>
+              </div>
               <a class="icon-link" id="exportLink" href="#" aria-label="导出 Markdown" title="导出">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
               </a>
             </div>
-          </div>
-          <div class="day-summary">
-            <span id="entryCount">0 条记录</span>
-            <span id="lastSavedAt">今天还没有开始</span>
-          </div>
-          <div class="timeline-list" id="timelineList">
-            <div class="empty-state">正在读取今天的记录...</div>
-          </div>
-          <details class="markdown-drawer">
-            <summary>查看 Markdown 原文</summary>
-            <pre class="markdown-view" id="markdownView">正在读取今天的记录...</pre>
-          </details>
-        </section>
-
-        <section class="review-panel view-panel" data-view-panel="review">
-          <div class="panel-heading">
-            <div>
-              <p class="section-label">AI 辅助复盘</p>
-              <h2>今天在干嘛</h2>
+            <div class="day-summary">
+              <span id="entryCount">0 条记录</span>
+              <span id="lastSavedAt">今天还没有开始</span>
             </div>
-          </div>
-          <div class="review-output" id="reviewOutput">
-            <p>点击“复盘”后，会根据当天记录生成：事实摘要、行动主线、卡点、情绪/能量、下一步。</p>
-          </div>
-        </section>
-
-        <section class="search-panel view-panel" data-view-panel="search">
-          <div class="panel-heading">
-            <div>
-              <p class="section-label">查找</p>
-              <h2>标签与搜索</h2>
+            <div class="timeline-list" id="timelineList">
+              <div class="empty-state">正在读取记录...</div>
             </div>
-          </div>
-          <div class="search-row">
-            <input id="searchInput" type="search" placeholder="搜索内容或 #标签">
-            <button class="icon-button dark" id="searchButton" type="button" aria-label="搜索" title="搜索">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            </button>
-          </div>
-          <div class="tag-list" id="tagList"></div>
-          <div class="search-results" id="searchResults"></div>
+            <details class="markdown-drawer">
+              <summary>查看 Markdown 原文</summary>
+              <pre class="markdown-view" id="markdownView">正在读取记录...</pre>
+            </details>
+          </section>
         </section>
       </main>
     </div>
