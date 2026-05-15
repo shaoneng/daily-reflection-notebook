@@ -68,6 +68,30 @@ export function appendEntry(markdown, entry) {
   return `${base.trimEnd()}\n\n${block}`;
 }
 
+export function removeEntryAt(markdown, date, entryIndex) {
+  const base = stripReview(markdown || emptyMarkdown(date));
+  const lines = base.split("\n");
+  const starts = [];
+
+  lines.forEach((line, index) => {
+    if (/^##\s+/.test(line) && !line.startsWith("## AI 复盘")) starts.push(index);
+  });
+
+  if (!Number.isInteger(entryIndex) || entryIndex < 0 || entryIndex >= starts.length) {
+    throw new Error("没有找到要删除的记录。");
+  }
+
+  const start = starts[entryIndex];
+  const end = starts[entryIndex + 1] ?? lines.length;
+  lines.splice(start, end - start);
+
+  const cleaned = lines.join("\n").trimEnd();
+  if (!starts.length || !cleaned.replace(/^#\s+[^\n]+\n*/, "").trim()) {
+    return emptyMarkdown(date);
+  }
+  return `${cleaned}\n\n`;
+}
+
 export function appendReview(markdown, review, generatedAt) {
   const base = stripReview(markdown);
   return `${base.trimEnd()}${REVIEW_MARKER}（${generatedAt}）\n\n${String(review).trim()}\n`;
