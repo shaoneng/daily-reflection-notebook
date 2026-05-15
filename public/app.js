@@ -67,6 +67,11 @@ function bindEvents() {
     refreshDay();
     activateView("today");
   });
+  els.timelineList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-entry-index]");
+    if (!button) return;
+    deleteEntry(Number(button.dataset.entryIndex));
+  });
   els.tabButtons.forEach((button) => {
     button.addEventListener("click", () => activateView(button.dataset.viewTarget));
   });
@@ -177,6 +182,32 @@ async function runReview() {
   }
 }
 
+async function deleteEntry(entryIndex) {
+  if (!Number.isInteger(entryIndex)) return;
+  const confirmed = window.confirm("确定删除这条记录吗？删除后，今天的 AI 复盘也会清空，需要重新生成。");
+  if (!confirmed) return;
+
+  setBusy(true);
+  setStatus("删除中");
+  try {
+    const data = await api("/api/day", {
+      method: "DELETE",
+      body: JSON.stringify({
+        date: state.selectedDate,
+        entryIndex,
+      }),
+    });
+    renderDay(data.markdown);
+    setStatus("已删除");
+    activateView("today");
+    refreshTags();
+  } catch (error) {
+    showError(error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function runSearch(queryOverride) {
   const q = (queryOverride || els.searchInput.value).trim();
   if (!q) return;
@@ -237,6 +268,7 @@ function renderDay(markdown, options = {}) {
     ? entries.map(renderTimelineItem).join("")
     : '<div class="empty-state">还没有记录。先在左侧写一条，今天就开始有形状了。</div>';
   if (review && !options.keepReview) renderReview(review);
+  if (!review && !options.keepReview) resetReviewOutput();
 }
 
 function renderTimelineItem(entry) {
@@ -248,6 +280,9 @@ function renderTimelineItem(entry) {
         <p>${escapeHtml(entry.content)}</p>
         ${tags.length ? `<div class="inline-tags">${tags.map((tag) => `<span class="inline-tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
       </div>
+      <button class="delete-entry-button" type="button" data-entry-index="${entry.index}" aria-label="删除 ${escapeAttr(entry.time)} 的记录" title="删除这条记录">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      </button>
     </article>
   `;
 }
@@ -256,6 +291,7 @@ function parseEntries(markdown) {
   const lines = markdown.split("\n");
   const entries = [];
   let current = null;
+  let entryIndex = 0;
 
   for (const line of lines) {
     const heading = line.match(/^##\s+(.+)$/);
@@ -265,7 +301,8 @@ function parseEntries(markdown) {
         current = null;
         break;
       }
-      current = { heading: heading[1], lines: [] };
+      current = { heading: heading[1], index: entryIndex, lines: [] };
+      entryIndex += 1;
       continue;
     }
     if (!current || line.trim() === "---") continue;
@@ -279,6 +316,7 @@ function parseEntries(markdown) {
 function normalizeEntry(entry) {
   const content = entry.lines.join("\n").trim();
   return {
+    index: entry.index,
     time: formatEntryTime(entry.heading),
     content,
   };
@@ -297,6 +335,10 @@ function parseLatestReview(markdown) {
 
 function renderReview(markdown) {
   els.reviewOutput.innerHTML = markdownToHtml(markdown);
+}
+
+function resetReviewOutput() {
+  els.reviewOutput.innerHTML = "<p>点击“复盘”后，会根据当天记录生成：事实摘要、行动主线、卡点、情绪/能量、下一步。</p>";
 }
 
 function extractTags(content) {
@@ -353,6 +395,9 @@ function activateView(name) {
 function setBusy(isBusy) {
   els.saveButton.disabled = isBusy;
   els.reviewButton.disabled = isBusy;
+  els.timelineList.querySelectorAll("[data-entry-index]").forEach((button) => {
+    button.disabled = isBusy;
+  });
 }
 
 function setStatus(message) {
