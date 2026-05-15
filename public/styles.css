@@ -1,17 +1,20 @@
 :root {
   color-scheme: light;
-  --ink: #18251f;
-  --muted: #687168;
-  --paper: #f6f3ed;
-  --surface: #fffdf8;
-  --surface-soft: #fbf7ef;
-  --line: #ded6c7;
-  --line-soft: rgba(222, 214, 199, 0.68);
-  --accent: #d45b3f;
-  --accent-2: #4f7f62;
-  --accent-soft: rgba(212, 91, 63, 0.12);
-  --success-soft: rgba(79, 127, 98, 0.12);
-  --shadow-soft: 0 18px 42px rgba(24, 37, 31, 0.08);
+  --ink: #14213d;
+  --muted: #64748b;
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --line: #d8e0e8;
+  --line-soft: rgba(148, 163, 184, 0.28);
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-2: #0f766e;
+  --accent-soft: rgba(37, 99, 235, 0.1);
+  --success-soft: rgba(15, 118, 110, 0.12);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.08);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -101,7 +104,7 @@ h3 {
 .activity-panel,
 .day-panel,
 dialog {
-  background: rgba(255, 253, 248, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   border: 1px solid var(--line-soft);
   border-radius: 8px;
 }
@@ -137,7 +140,7 @@ dialog {
   padding: 5px 11px;
   border-radius: 999px;
   background: var(--success-soft);
-  color: #315f42;
+  color: #0f766e;
   font-size: 12px;
   font-weight: 850;
   white-space: nowrap;
@@ -182,16 +185,16 @@ dialog {
 }
 
 .calendar-day.muted {
-  color: #a59d91;
+  color: #a5b1c2;
 }
 
 .calendar-day.today {
-  box-shadow: inset 0 0 0 1px rgba(79, 127, 98, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.42);
 }
 
 .calendar-day.selected {
-  background: var(--ink);
-  color: #fffdf8;
+  background: var(--accent);
+  color: #ffffff;
 }
 
 #datePicker {
@@ -241,13 +244,13 @@ textarea {
 
 textarea::placeholder,
 input::placeholder {
-  color: #8b9389;
+  color: #94a3b8;
 }
 
 textarea:focus,
 input:focus {
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 4px rgba(79, 127, 98, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
 }
 
 button,
@@ -271,17 +274,21 @@ button,
 .primary-button {
   gap: 7px;
   padding: 0 12px;
-  background: var(--ink);
-  color: #fffdf8;
+  background: var(--accent);
+  color: #ffffff;
   font-size: 13px;
   font-weight: 850;
+}
+
+.primary-button:hover {
+  background: var(--accent-hover);
 }
 
 .icon-button,
 .icon-link {
   width: 44px;
   min-height: 44px;
-  background: rgba(24, 37, 31, 0.07);
+  background: rgba(37, 99, 235, 0.08);
   color: var(--ink);
 }
 
@@ -293,7 +300,7 @@ button,
 button:hover,
 .icon-link:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(24, 37, 31, 0.1);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
 }
 
 button:disabled {
@@ -368,7 +375,7 @@ input {
   border-radius: 8px;
   background: var(--surface-soft);
   border: 1px solid var(--line-soft);
-  color: #25322b;
+  color: #1e293b;
   font-size: 14px;
   line-height: 1.68;
 }
@@ -437,28 +444,28 @@ input {
   min-height: 0;
   padding: 0;
   border-radius: 4px;
-  background: #edf0f3;
-  box-shadow: inset 0 0 0 1px rgba(24, 37, 31, 0.04);
+  background: #e9eef5;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
 }
 
 .activity-day[data-level="1"] {
-  background: #c8efce;
+  background: #bfe8e1;
 }
 
 .activity-day[data-level="2"] {
-  background: #78d68b;
+  background: #6dd1c3;
 }
 
 .activity-day[data-level="3"] {
-  background: #2fb45e;
+  background: #1da897;
 }
 
 .activity-day[data-level="4"] {
-  background: #116b34;
+  background: #0f766e;
 }
 
 .activity-day.today {
-  box-shadow: inset 0 0 0 2px rgba(24, 37, 31, 0.38);
+  box-shadow: inset 0 0 0 2px rgba(20, 33, 61, 0.42);
 }
 
 .activity-day.selected {
@@ -493,23 +500,23 @@ input {
   width: 14px;
   height: 14px;
   border-radius: 4px;
-  background: #edf0f3;
+  background: #e9eef5;
 }
 
 .activity-legend i[data-level="1"] {
-  background: #c8efce;
+  background: #bfe8e1;
 }
 
 .activity-legend i[data-level="2"] {
-  background: #78d68b;
+  background: #6dd1c3;
 }
 
 .activity-legend i[data-level="3"] {
-  background: #2fb45e;
+  background: #1da897;
 }
 
 .activity-legend i[data-level="4"] {
-  background: #116b34;
+  background: #0f766e;
 }
 
 .timeline-list {
@@ -528,7 +535,7 @@ input {
 }
 
 .timeline-time {
-  color: var(--accent-2);
+  color: var(--accent);
   font-size: 14px;
   font-weight: 850;
   line-height: 1.35;
@@ -537,7 +544,7 @@ input {
 .timeline-content {
   display: grid;
   gap: 8px;
-  color: #25322b;
+  color: #1e293b;
   font-size: 15px;
   line-height: 1.66;
   white-space: pre-wrap;
@@ -551,7 +558,7 @@ input {
 }
 
 .inline-tag {
-  color: #8e321f;
+  color: #b45309;
   font-size: 12px;
   font-weight: 850;
 }
@@ -565,12 +572,12 @@ input {
   justify-content: center;
   border-radius: 8px;
   background: transparent;
-  color: #9a6a5d;
+  color: #b45309;
 }
 
 .delete-entry-button:hover {
-  background: rgba(212, 91, 63, 0.12);
-  color: #8e321f;
+  background: var(--danger-soft);
+  color: var(--danger);
   box-shadow: none;
 }
 
@@ -611,7 +618,7 @@ input {
   border-radius: 8px;
   background: var(--surface-soft);
   border: 1px solid var(--line-soft);
-  color: #25322b;
+  color: #1e293b;
   font: 13px/1.72 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   white-space: pre-wrap;
   word-break: break-word;
@@ -624,7 +631,7 @@ dialog {
 }
 
 dialog::backdrop {
-  background: rgba(24, 37, 31, 0.35);
+  background: rgba(15, 23, 42, 0.35);
 }
 
 .dialog-body {
