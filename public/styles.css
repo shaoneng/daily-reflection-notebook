@@ -198,18 +198,22 @@ dialog {
 
 .input-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
 .entry-card {
   display: grid;
   gap: 10px;
-  min-height: 208px;
+  min-height: 236px;
   padding: 14px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   background: var(--surface);
+}
+
+.single-entry-card textarea {
+  min-height: 172px;
 }
 
 .entry-card-head {
@@ -497,12 +501,8 @@ dialog::backdrop {
     position: static;
   }
 
-  .input-grid {
-    grid-template-columns: 1fr;
-  }
-
   .entry-card {
-    min-height: 180px;
+    min-height: 200px;
   }
 
   .timeline-item {
@@ -568,7 +568,7 @@ dialog::backdrop {
   }
 
   .entry-card {
-    min-height: 168px;
+    min-height: 184px;
     padding: 12px;
   }
 
@@ -582,7 +582,7 @@ dialog::backdrop {
   }
 
   textarea {
-    min-height: 118px;
+    min-height: 142px;
   }
 
   .panel-heading {
