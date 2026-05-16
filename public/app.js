@@ -1,6 +1,5 @@
 const state = {
   selectedDate: toLocalDate(new Date()),
-  calendarMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   activityYear: new Date().getFullYear(),
   password: localStorage.getItem("dailyNotebookPassword") || "",
 };
@@ -8,18 +7,13 @@ const state = {
 const els = {
   todayLabel: document.querySelector("#todayLabel"),
   syncStatus: document.querySelector("#syncStatus"),
-  datePicker: document.querySelector("#datePicker"),
   selectedDateLabel: document.querySelector("#selectedDateLabel"),
-  calendarMonthLabel: document.querySelector("#calendarMonthLabel"),
-  calendarGrid: document.querySelector("#calendarGrid"),
   activityYearLabel: document.querySelector("#activityYearLabel"),
   activityMonths: document.querySelector("#activityMonths"),
   activityGrid: document.querySelector("#activityGrid"),
   activitySummary: document.querySelector("#activitySummary"),
   prevYearButton: document.querySelector("#prevYearButton"),
   nextYearButton: document.querySelector("#nextYearButton"),
-  prevMonthButton: document.querySelector("#prevMonthButton"),
-  nextMonthButton: document.querySelector("#nextMonthButton"),
   saveEntryButtons: document.querySelectorAll(".save-entry-button"),
   timelineList: document.querySelector("#timelineList"),
   entryCount: document.querySelector("#entryCount"),
@@ -38,11 +32,9 @@ const els = {
 init();
 
 function init() {
-  els.datePicker.value = state.selectedDate;
   els.todayLabel.textContent = formatFullDate(new Date());
   els.passwordInput.value = state.password;
   bindEvents();
-  renderCalendar();
   refreshDay();
   refreshActivity();
 }
@@ -58,22 +50,6 @@ function bindEvents() {
     });
   });
   els.exportLink.addEventListener("click", exportMarkdown);
-  els.datePicker.addEventListener("change", () => {
-    selectDate(els.datePicker.value || toLocalDate(new Date()));
-  });
-  els.calendarGrid.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-calendar-date]");
-    if (!button) return;
-    selectDate(button.dataset.calendarDate);
-  });
-  els.prevMonthButton.addEventListener("click", () => {
-    state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth() - 1, 1);
-    renderCalendar();
-  });
-  els.nextMonthButton.addEventListener("click", () => {
-    state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth() + 1, 1);
-    renderCalendar();
-  });
   els.prevYearButton.addEventListener("click", () => {
     state.activityYear -= 1;
     refreshActivity();
@@ -105,11 +81,8 @@ function bindEvents() {
 
 function selectDate(date) {
   state.selectedDate = date;
-  els.datePicker.value = date;
   const selected = parseDate(date);
-  state.calendarMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
   state.activityYear = selected.getFullYear();
-  renderCalendar();
   refreshDay();
   refreshActivity();
 }
@@ -259,32 +232,6 @@ async function refreshActivity() {
   } catch (error) {
     els.activitySummary.textContent = error.message;
   }
-}
-
-function renderCalendar() {
-  const year = state.calendarMonth.getFullYear();
-  const month = state.calendarMonth.getMonth();
-  const today = toLocalDate(new Date());
-  els.calendarMonthLabel.textContent = new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "long",
-  }).format(state.calendarMonth);
-
-  const firstDay = new Date(year, month, 1);
-  const startOffset = (firstDay.getDay() + 6) % 7;
-  const start = new Date(year, month, 1 - startOffset);
-  const days = Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    const value = toLocalDate(date);
-    const isCurrentMonth = date.getMonth() === month;
-    return `
-      <button class="calendar-day${value === state.selectedDate ? " selected" : ""}${value === today ? " today" : ""}${isCurrentMonth ? "" : " muted"}" type="button" data-calendar-date="${value}">
-        ${date.getDate()}
-      </button>
-    `;
-  });
-  els.calendarGrid.innerHTML = days.join("");
 }
 
 function renderActivity(data) {
