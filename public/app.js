@@ -288,10 +288,7 @@ function renderActivityMonth(year, month, countByDate, today) {
 
 function activityLevel(count) {
   if (!count) return 0;
-  if (count === 1) return 1;
-  if (count === 2) return 2;
-  if (count <= 4) return 3;
-  return 4;
+  return Math.min(Math.ceil(count / 10), 20);
 }
 
 function renderDay(markdown) {
