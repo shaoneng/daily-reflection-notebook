@@ -50,12 +50,10 @@ function bindEvents() {
   });
   els.exportLink.addEventListener("click", exportMarkdown);
   els.prevYearButton.addEventListener("click", () => {
-    state.activityYear -= 1;
-    refreshActivity();
+    navigateActivityMonth(-1);
   });
   els.nextYearButton.addEventListener("click", () => {
-    state.activityYear += 1;
-    refreshActivity();
+    navigateActivityMonth(1);
   });
   els.activityGrid.addEventListener("click", (event) => {
     const button = event.target.closest("[data-activity-date]");
@@ -84,6 +82,14 @@ function selectDate(date) {
   state.activityYear = selected.getFullYear();
   refreshDay();
   refreshActivity();
+}
+
+function navigateActivityMonth(offset) {
+  const selected = parseDate(state.selectedDate);
+  const targetMonthStart = new Date(selected.getFullYear(), selected.getMonth() + offset, 1);
+  const targetMonthLastDay = new Date(targetMonthStart.getFullYear(), targetMonthStart.getMonth() + 1, 0).getDate();
+  const targetDay = Math.min(selected.getDate(), targetMonthLastDay);
+  selectDate(toLocalDate(new Date(targetMonthStart.getFullYear(), targetMonthStart.getMonth(), targetDay)));
 }
 
 async function exportMarkdown(event) {
