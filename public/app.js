@@ -243,10 +243,10 @@ function renderActivity(data) {
 
   const countByDate = new Map((data.days || []).map((day) => [day.date, day.count]));
   const today = toLocalDate(new Date());
+  const selected = parseDate(state.selectedDate);
+  const month = selected.getFullYear() === year ? selected.getMonth() : 0;
 
-  els.activityGrid.innerHTML = Array.from({ length: 12 }, (_, month) => {
-    return renderActivityMonth(year, month, countByDate, today);
-  }).join("");
+  els.activityGrid.innerHTML = renderActivityMonth(year, month, countByDate, today);
 }
 
 function renderActivityMonth(year, month, countByDate, today) {
