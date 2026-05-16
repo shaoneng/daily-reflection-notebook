@@ -340,57 +340,56 @@ input {
 }
 
 .activity-wrap {
-  --activity-cell: 14px;
-  --activity-gap: 4px;
-  overflow-x: auto;
-  padding-bottom: 4px;
+  display: grid;
+  gap: 12px;
 }
 
-.activity-months {
+.month-activity {
   display: grid;
-  grid-template-columns: repeat(var(--activity-weeks), var(--activity-cell));
-  gap: var(--activity-gap);
-  min-width: max-content;
-  margin-left: 28px;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.month-activity:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.month-activity h3 {
   color: var(--ink);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 850;
 }
 
-.activity-body {
-  display: flex;
-  gap: 8px;
-  min-width: max-content;
-  margin-top: 6px;
-}
-
-.activity-weekdays {
+.month-weekdays,
+.month-grid {
   display: grid;
-  grid-template-rows: repeat(7, var(--activity-cell));
-  gap: var(--activity-gap);
-  width: 20px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.month-weekdays {
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  line-height: var(--activity-cell);
+  font-size: 10px;
+  font-weight: 850;
+  text-align: center;
 }
 
-.activity-grid {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-columns: repeat(var(--activity-weeks), var(--activity-cell));
-  grid-template-rows: repeat(7, var(--activity-cell));
-  gap: var(--activity-gap);
-  min-width: max-content;
+.month-blank {
+  min-height: 24px;
 }
 
 .activity-day {
-  width: var(--activity-cell);
-  height: var(--activity-cell);
-  min-height: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
   padding: 0;
   border-radius: 4px;
   background: #e9eef5;
+  color: rgba(20, 33, 61, 0.66);
+  font-size: 10px;
+  font-weight: 800;
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
 }
 
@@ -408,6 +407,7 @@ input {
 
 .activity-day[data-level="4"] {
   background: #0f766e;
+  color: #ffffff;
 }
 
 .activity-day.today {
@@ -705,7 +705,7 @@ dialog::backdrop {
   }
 
   .activity-wrap {
-    --activity-cell: 13px;
+    gap: 10px;
   }
 
   .activity-footer {
