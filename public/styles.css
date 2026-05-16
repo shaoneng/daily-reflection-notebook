@@ -433,36 +433,7 @@ input {
   color: var(--muted);
   font-size: 13px;
   font-weight: 750;
-}
-
-.activity-legend {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
   white-space: nowrap;
-}
-
-.activity-legend i {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  background: #e9eef5;
-}
-
-.activity-legend i[data-level="1"] {
-  background: #bfe8e1;
-}
-
-.activity-legend i[data-level="2"] {
-  background: #6dd1c3;
-}
-
-.activity-legend i[data-level="3"] {
-  background: #1da897;
-}
-
-.activity-legend i[data-level="4"] {
-  background: #0f766e;
 }
 
 .timeline-list {
