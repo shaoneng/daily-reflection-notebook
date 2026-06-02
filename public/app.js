@@ -308,13 +308,11 @@ function renderDay(markdown) {
 }
 
 function renderTimelineItem(entry) {
-  const tags = extractTags(entry.content);
   return `
     <article class="timeline-item">
       <time class="timeline-time">${escapeHtml(entry.time)}</time>
       <div class="timeline-content">
         <p>${escapeHtml(entry.content)}</p>
-        ${tags.length ? `<div class="inline-tags">${tags.map((tag) => `<span class="inline-tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
       </div>
       <button class="delete-entry-button" type="button" data-entry-index="${entry.index}" aria-label="删除 ${escapeAttr(entry.time)} 的记录" title="删除这条记录">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
@@ -406,10 +404,6 @@ function markdownToHtml(markdown) {
 
   if (inList) html += "</ul>";
   return html || "<p>还没有生成复盘。</p>";
-}
-
-function extractTags(content) {
-  return Array.from(new Set(content.match(/#[^\s#，。,.；;！!？?、）)（(]+/g) || []));
 }
 
 function setBusy(isBusy) {
