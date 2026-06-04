@@ -5,6 +5,13 @@ const state = {
   reviewMode: localStorage.getItem("dailyNotebookReviewMode") || "learning",
 };
 
+const TASK_STATUS_LABELS = {
+  todo: "今日待验证",
+  next: "明日继续",
+  done: "已完成",
+  dropped: "已放弃",
+};
+
 const els = {
   todayLabel: document.querySelector("#todayLabel"),
   syncStatus: document.querySelector("#syncStatus"),
@@ -26,6 +33,11 @@ const els = {
   reviewButtonText: document.querySelector("#reviewButtonText"),
   reviewModeButtons: document.querySelectorAll("[data-review-mode]"),
   reviewOutput: document.querySelector("#reviewOutput"),
+  taskCount: document.querySelector("#taskCount"),
+  taskForm: document.querySelector("#taskForm"),
+  taskStatusInput: document.querySelector("#taskStatusInput"),
+  taskContentInput: document.querySelector("#taskContentInput"),
+  taskList: document.querySelector("#taskList"),
   settingsButton: document.querySelector("#settingsButton"),
   settingsDialog: document.querySelector("#settingsDialog"),
   passwordInput: document.querySelector("#passwordInput"),
@@ -76,6 +88,17 @@ function bindEvents() {
     const button = event.target.closest("[data-entry-index]");
     if (!button) return;
     deleteEntry(Number(button.dataset.entryIndex));
+  });
+  els.taskForm.addEventListener("submit", createTask);
+  els.taskList.addEventListener("change", (event) => {
+    const select = event.target.closest("[data-task-status]");
+    if (!select) return;
+    updateTaskStatus(Number(select.dataset.taskStatus), select.value);
+  });
+  els.taskList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delete-task]");
+    if (!button) return;
+    deleteTask(Number(button.dataset.deleteTask));
   });
   els.settingsButton.addEventListener("click", () => {
     els.passwordInput.value = state.password;
@@ -225,6 +248,84 @@ async function runReview() {
   }
 }
 
+async function createTask(event) {
+  event.preventDefault();
+  const content = els.taskContentInput.value.trim();
+  if (!content) {
+    setStatus("先写下一步");
+    els.taskContentInput.focus();
+    return;
+  }
+
+  setBusy(true);
+  setStatus("添加中");
+  try {
+    const data = await api("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        date: state.selectedDate,
+        status: els.taskStatusInput.value,
+        content,
+      }),
+    });
+    renderDay(data.markdown);
+    els.taskContentInput.value = "";
+    setStatus("已添加下一步");
+  } catch (error) {
+    showTaskError(error);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function updateTaskStatus(taskIndex, status) {
+  if (!Number.isInteger(taskIndex)) return;
+
+  setBusy(true);
+  setStatus("更新中");
+  try {
+    const data = await api("/api/tasks", {
+      method: "PATCH",
+      body: JSON.stringify({
+        date: state.selectedDate,
+        taskIndex,
+        status,
+      }),
+    });
+    renderDay(data.markdown);
+    setStatus("下一步已更新");
+  } catch (error) {
+    showTaskError(error);
+    refreshDay();
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function deleteTask(taskIndex) {
+  if (!Number.isInteger(taskIndex)) return;
+  const confirmed = window.confirm("确定删除这个下一步吗？");
+  if (!confirmed) return;
+
+  setBusy(true);
+  setStatus("删除中");
+  try {
+    const data = await api("/api/tasks", {
+      method: "DELETE",
+      body: JSON.stringify({
+        date: state.selectedDate,
+        taskIndex,
+      }),
+    });
+    renderDay(data.markdown);
+    setStatus("下一步已删除");
+  } catch (error) {
+    showTaskError(error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function api(path, options = {}) {
   const headers = {
     "content-type": "application/json",
@@ -308,9 +409,11 @@ function activityLevel(count) {
 function renderDay(markdown) {
   const entries = parseEntries(markdown);
   const review = parseLatestReview(markdown);
+  const tasks = parseTasks(markdown);
   els.markdownView.textContent = markdown;
   els.entryCount.textContent = `${entries.length} 条记录`;
   els.lastSavedAt.textContent = entries.length ? `最近 ${entries.at(-1).time}` : "还没有开始";
+  renderTasks(tasks);
   els.timelineList.innerHTML = entries.length
     ? entries.map(renderTimelineItem).join("")
     : '<div class="empty-state">这一天还没有记录。先在上面的输入框写一条。</div>';
@@ -349,6 +452,10 @@ function parseEntries(markdown) {
         current = null;
         break;
       }
+      if (heading[1].startsWith("下一步追踪")) {
+        current = null;
+        continue;
+      }
       current = { heading: heading[1], index: entryIndex, lines: [] };
       entryIndex += 1;
       continue;
@@ -359,6 +466,54 @@ function parseEntries(markdown) {
 
   if (current) entries.push(normalizeEntry(current));
   return entries.filter((entry) => entry.content);
+}
+
+function parseTasks(markdown) {
+  const reviewIndex = markdown.indexOf("## AI 复盘");
+  const base = reviewIndex === -1 ? markdown : markdown.slice(0, reviewIndex);
+  const taskIndex = base.indexOf("## 下一步追踪");
+  if (taskIndex === -1) return [];
+  const lines = base.slice(taskIndex).split("\n");
+  const tasks = [];
+
+  for (const line of lines) {
+    const match = line.match(/^-\s+\[([a-z]+)\]\s+(.+)$/);
+    if (!match) continue;
+    const status = TASK_STATUS_LABELS[match[1]] ? match[1] : "todo";
+    const content = match[2].trim();
+    if (!content) continue;
+    tasks.push({
+      index: tasks.length,
+      status,
+      content,
+    });
+  }
+
+  return tasks;
+}
+
+function renderTasks(tasks) {
+  els.taskCount.textContent = `${tasks.length} 项`;
+  els.taskList.innerHTML = tasks.length
+    ? tasks.map(renderTaskItem).join("")
+    : '<div class="empty-state">复盘后会自动沉淀下一步，也可以手动添加。</div>';
+}
+
+function renderTaskItem(task) {
+  const options = Object.entries(TASK_STATUS_LABELS)
+    .map(([value, label]) => `<option value="${value}"${value === task.status ? " selected" : ""}>${label}</option>`)
+    .join("");
+  return `
+    <article class="task-item" data-task-state="${escapeAttr(task.status)}">
+      <select data-task-status="${task.index}" aria-label="更新下一步状态">
+        ${options}
+      </select>
+      <p>${escapeHtml(task.content)}</p>
+      <button class="delete-entry-button" type="button" data-delete-task="${task.index}" aria-label="删除下一步" title="删除这个下一步">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      </button>
+    </article>
+  `;
 }
 
 function normalizeEntry(entry) {
@@ -437,6 +592,12 @@ function setBusy(isBusy) {
     button.disabled = isBusy;
   });
   els.reviewButton.disabled = isBusy;
+  els.taskForm.querySelectorAll("button,input,select").forEach((control) => {
+    control.disabled = isBusy;
+  });
+  els.taskList.querySelectorAll("button,select").forEach((control) => {
+    control.disabled = isBusy;
+  });
   els.timelineList.querySelectorAll("[data-entry-index]").forEach((button) => {
     button.disabled = isBusy;
   });
@@ -457,6 +618,12 @@ function showReviewError(error) {
   console.error(error);
   setStatus("出错");
   els.reviewOutput.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+}
+
+function showTaskError(error) {
+  console.error(error);
+  setStatus("出错");
+  els.taskList.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
 }
 
 function emptyMarkdown(date) {

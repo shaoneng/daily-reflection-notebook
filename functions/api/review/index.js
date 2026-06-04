@@ -5,7 +5,9 @@ import {
   error,
   getStore,
   json,
+  mergeReviewTasks,
   noteKey,
+  readTasks,
   stripReview,
   validateDate,
 } from "../../_shared.js";
@@ -76,7 +78,8 @@ export async function onRequestPost(context) {
 
   const generatedAt = new Date().toISOString();
   const reviewLabel = [REVIEW_MODES[mode].label, providerLabel(result.provider)].filter(Boolean).join("｜");
-  const updatedMarkdown = appendReview(markdown, result.review, generatedAt, reviewLabel);
+  const reviewedMarkdown = appendReview(markdown, result.review, generatedAt, reviewLabel);
+  const updatedMarkdown = mergeReviewTasks(reviewedMarkdown, result.review);
   await store.put(key, updatedMarkdown);
 
   return json({
@@ -85,6 +88,7 @@ export async function onRequestPost(context) {
     provider: result.provider,
     model: result.model,
     review: result.review,
+    tasks: readTasks(updatedMarkdown),
     markdown: updatedMarkdown,
   });
 }

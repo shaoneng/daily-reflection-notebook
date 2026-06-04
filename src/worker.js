@@ -4,6 +4,12 @@ import { onRequestGet as exportDay } from "../functions/api/export/index.js";
 import { onRequestPost as reviewDay } from "../functions/api/review/index.js";
 import { onRequestGet as searchNotes } from "../functions/api/search/index.js";
 import { onRequestGet as listTags } from "../functions/api/tags/index.js";
+import {
+  onRequestDelete as deleteTask,
+  onRequestGet as getTasks,
+  onRequestPatch as updateTask,
+  onRequestPost as createTask,
+} from "../functions/api/tasks/index.js";
 
 const routes = {
   "GET /api/day": getDay,
@@ -14,6 +20,10 @@ const routes = {
   "POST /api/review": reviewDay,
   "GET /api/search": searchNotes,
   "GET /api/tags": listTags,
+  "GET /api/tasks": getTasks,
+  "POST /api/tasks": createTask,
+  "PATCH /api/tasks": updateTask,
+  "DELETE /api/tasks": deleteTask,
 };
 
 export default {

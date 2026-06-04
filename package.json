@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "wrangler dev --port 8788",
     "deploy": "wrangler deploy",
-    "check": "node --check src/worker.js && node --check functions/api/day/index.js && node --check functions/api/activity/index.js && node --check functions/api/review/index.js && node --check functions/api/search/index.js && node --check functions/api/export/index.js && node --check functions/api/tags/index.js"
+    "check": "node --check public/app.js && node --check functions/_shared.js && node --check src/worker.js && node --check functions/api/day/index.js && node --check functions/api/activity/index.js && node --check functions/api/review/index.js && node --check functions/api/search/index.js && node --check functions/api/export/index.js && node --check functions/api/tags/index.js && node --check functions/api/tasks/index.js"
   },
   "devDependencies": {
     "wrangler": "^4.15.0"

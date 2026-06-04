@@ -52,6 +52,6 @@ export async function onRequestGet(context) {
 function countEntries(markdown) {
   return stripReview(markdown)
     .split("\n")
-    .filter((line) => /^##\s+/.test(line) && !line.startsWith("## AI 复盘"))
+    .filter((line) => /^##\s+/.test(line) && !line.startsWith("## AI 复盘") && !line.startsWith("## 下一步追踪"))
     .length;
 }

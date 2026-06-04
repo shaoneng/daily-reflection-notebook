@@ -104,6 +104,28 @@
                 <p>还没有生成复盘。</p>
               </div>
             </section>
+            <section class="task-card" aria-labelledby="taskTitle">
+              <div class="task-head">
+                <h3 id="taskTitle">下一步追踪</h3>
+                <span class="task-count" id="taskCount">0 项</span>
+              </div>
+              <form class="task-form" id="taskForm">
+                <select id="taskStatusInput" aria-label="下一步状态">
+                  <option value="todo">今日待验证</option>
+                  <option value="next">明日继续</option>
+                  <option value="done">已完成</option>
+                  <option value="dropped">已放弃</option>
+                </select>
+                <input id="taskContentInput" type="text" autocomplete="off" placeholder="写一个可执行的下一步">
+                <button class="primary-button" type="submit">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                  添加
+                </button>
+              </form>
+              <div class="task-list" id="taskList">
+                <div class="empty-state">复盘后会自动沉淀下一步，也可以手动添加。</div>
+              </div>
+            </section>
             <div class="timeline-list" id="timelineList">
               <div class="empty-state">正在读取记录...</div>
             </div>
