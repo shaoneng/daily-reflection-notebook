@@ -2,6 +2,7 @@ const state = {
   selectedDate: toLocalDate(new Date()),
   activityYear: new Date().getFullYear(),
   password: localStorage.getItem("dailyNotebookPassword") || "",
+  reviewMode: localStorage.getItem("dailyNotebookReviewMode") || "learning",
 };
 
 const els = {
@@ -20,7 +21,10 @@ const els = {
   markdownView: document.querySelector("#markdownView"),
   noteTitle: document.querySelector("#noteTitle"),
   exportLink: document.querySelector("#exportLink"),
+  reviewTitle: document.querySelector("#reviewTitle"),
   reviewButton: document.querySelector("#reviewButton"),
+  reviewButtonText: document.querySelector("#reviewButtonText"),
+  reviewModeButtons: document.querySelectorAll("[data-review-mode]"),
   reviewOutput: document.querySelector("#reviewOutput"),
   settingsButton: document.querySelector("#settingsButton"),
   settingsDialog: document.querySelector("#settingsDialog"),
@@ -33,6 +37,7 @@ init();
 function init() {
   els.todayLabel.textContent = formatFullDate(new Date());
   els.passwordInput.value = state.password;
+  syncReviewMode();
   bindEvents();
   refreshDay();
   refreshActivity();
@@ -43,6 +48,13 @@ function bindEvents() {
     button.addEventListener("click", () => saveEntryFromCard(button.closest(".entry-card")));
   });
   els.reviewButton.addEventListener("click", runReview);
+  els.reviewModeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.reviewMode = button.dataset.reviewMode || "learning";
+      localStorage.setItem("dailyNotebookReviewMode", state.reviewMode);
+      syncReviewMode();
+    });
+  });
   document.querySelectorAll(".entry-input").forEach((textarea) => {
     textarea.addEventListener("keydown", (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") saveEntryFromCard(textarea.closest(".entry-card"));
@@ -191,19 +203,21 @@ async function deleteEntry(entryIndex) {
 
 async function runReview() {
   setBusy(true);
-  setStatus("复盘中");
-  els.reviewOutput.innerHTML = "<p>正在复盘今日记录...</p>";
+  const isLearningMode = state.reviewMode === "learning";
+  setStatus(isLearningMode ? "学习复盘中" : "复盘中");
+  els.reviewOutput.innerHTML = `<p>正在生成${isLearningMode ? "学习复盘" : "日常复盘"}...</p>`;
   try {
     const data = await api("/api/review", {
       method: "POST",
       body: JSON.stringify({
         date: state.selectedDate,
+        mode: state.reviewMode,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "local",
       }),
     });
     renderReview(data.review);
     renderDay(data.markdown);
-    setStatus("复盘完成");
+    setStatus(isLearningMode ? "学习复盘完成" : "复盘完成");
   } catch (error) {
     showReviewError(error);
   } finally {
@@ -372,7 +386,19 @@ function renderReview(markdown) {
 }
 
 function resetReviewOutput() {
-  els.reviewOutput.innerHTML = "<p>还没有生成复盘。</p>";
+  els.reviewOutput.innerHTML = `<p>还没有生成${state.reviewMode === "learning" ? "学习复盘" : "复盘"}。</p>`;
+}
+
+function syncReviewMode() {
+  const isLearningMode = state.reviewMode !== "daily";
+  state.reviewMode = isLearningMode ? "learning" : "daily";
+  els.reviewTitle.textContent = isLearningMode ? "AI 学习复盘" : "AI 日常复盘";
+  els.reviewButtonText.textContent = isLearningMode ? "生成学习复盘" : "生成日常复盘";
+  els.reviewModeButtons.forEach((button) => {
+    const isActive = button.dataset.reviewMode === state.reviewMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
 }
 
 function markdownToHtml(markdown) {

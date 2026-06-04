@@ -11,6 +11,8 @@
 - Markdown 导出
 - 标签提取和全文搜索
 - 访问口令保护
+- 近一周记录对照复盘，识别重复事项和相关联的事情
+- 学习复盘模式，优先使用 DeepSeek 生成可执行的学习复盘
 - DeepSeek `deepseek-v4-pro` 优先，Workers AI / OpenAI 作为可选备用
 
 ## 本地运行
@@ -39,6 +41,7 @@ http://localhost:8788
    - `DEEPSEEK_API_KEY`: DeepSeek API key
    - `DEEPSEEK_MODEL`: `deepseek-v4-pro`
    - `DEEPSEEK_BASE_URL`: 可选，默认 `https://api.deepseek.com`
+   - 学习复盘模式必须配置 `DEEPSEEK_API_KEY`，日常复盘可继续使用 Workers AI / OpenAI 备用
 4. 如果使用 Workers AI 作为备用，在 Worker 设置里添加 AI binding：
    - Binding name: `AI`
 5. 如果使用 OpenAI 作为备用，也可以设置：

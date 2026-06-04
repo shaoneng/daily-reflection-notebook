@@ -88,10 +88,16 @@
             </div>
             <section class="review-card" aria-labelledby="reviewTitle">
               <div class="review-head">
-                <h3 id="reviewTitle">AI 复盘</h3>
+                <div class="review-title-group">
+                  <h3 id="reviewTitle">AI 学习复盘</h3>
+                  <div class="review-mode-switch" role="group" aria-label="选择复盘模式">
+                    <button class="mode-button" type="button" data-review-mode="learning" aria-pressed="true">学习</button>
+                    <button class="mode-button" type="button" data-review-mode="daily" aria-pressed="false">日常</button>
+                  </div>
+                </div>
                 <button class="primary-button" id="reviewButton" type="button">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 9.7 8.2 4.5 10.5l5.2 2.3L12 18l2.3-5.2 5.2-2.3-5.2-2.3L12 3Z"/><path d="M19 16l-.8 1.8L16.5 18.5l1.7.7L19 21l.8-1.8 1.7-.7-1.7-.7L19 16Z"/></svg>
-                  生成复盘
+                  <span id="reviewButtonText">生成学习复盘</span>
                 </button>
               </div>
               <div class="review-output" id="reviewOutput">

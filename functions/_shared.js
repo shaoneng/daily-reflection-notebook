@@ -92,9 +92,10 @@ export function removeEntryAt(markdown, date, entryIndex) {
   return `${cleaned}\n\n`;
 }
 
-export function appendReview(markdown, review, generatedAt) {
+export function appendReview(markdown, review, generatedAt, modeLabel = "") {
   const base = stripReview(markdown);
-  return `${base.trimEnd()}${REVIEW_MARKER}（${generatedAt}）\n\n${String(review).trim()}\n`;
+  const label = modeLabel ? `${modeLabel}｜` : "";
+  return `${base.trimEnd()}${REVIEW_MARKER}（${label}${generatedAt}）\n\n${String(review).trim()}\n`;
 }
 
 export async function readIndex(store) {
