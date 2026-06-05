@@ -1,4 +1,5 @@
 const INDEX_KEY = "notes:index";
+const SUGGESTION_MARKER = "\n\n---\n\n## AI 建议待确认";
 const TASK_MARKER = "\n\n---\n\n## 下一步追踪";
 const REVIEW_MARKER = "\n\n---\n\n## AI 复盘";
 const TASK_STATUS_LABELS = {
@@ -72,7 +73,20 @@ export function stripTasks(markdown) {
   const review = reviewIndex === -1 ? "" : markdown.slice(reviewIndex);
   const taskIndex = beforeReview.indexOf(TASK_MARKER);
   if (taskIndex === -1) return markdown;
-  return `${beforeReview.slice(0, taskIndex).trimEnd()}\n\n${review.trimStart()}`.trimEnd() + "\n\n";
+  const suggestionIndex = beforeReview.indexOf(SUGGESTION_MARKER, taskIndex + TASK_MARKER.length);
+  const endIndex = suggestionIndex === -1 ? beforeReview.length : suggestionIndex;
+  return `${beforeReview.slice(0, taskIndex).trimEnd()}\n\n${beforeReview.slice(endIndex).trimStart()}${review ? `\n\n${review.trimStart()}` : ""}`.trimEnd() + "\n\n";
+}
+
+export function stripSuggestions(markdown) {
+  const reviewIndex = markdown.indexOf(REVIEW_MARKER);
+  const beforeReview = reviewIndex === -1 ? markdown : markdown.slice(0, reviewIndex);
+  const review = reviewIndex === -1 ? "" : markdown.slice(reviewIndex);
+  const suggestionIndex = beforeReview.indexOf(SUGGESTION_MARKER);
+  if (suggestionIndex === -1) return markdown;
+  const taskIndex = beforeReview.indexOf(TASK_MARKER);
+  const endIndex = taskIndex !== -1 && taskIndex > suggestionIndex ? taskIndex : beforeReview.length;
+  return `${beforeReview.slice(0, suggestionIndex).trimEnd()}\n\n${beforeReview.slice(endIndex).trimStart()}${review ? `\n\n${review.trimStart()}` : ""}`.trimEnd() + "\n\n";
 }
 
 export function appendEntry(markdown, entry) {
@@ -118,25 +132,13 @@ export function readTasks(markdown) {
   const base = stripReview(markdown || "");
   const taskIndex = base.indexOf(TASK_MARKER);
   if (taskIndex === -1) return [];
-  const taskSection = base.slice(taskIndex + TASK_MARKER.length);
-  const lines = taskSection.split("\n");
-  const tasks = [];
-
-  for (const line of lines) {
-    const match = line.match(/^-\s+\[([a-z]+)\]\s+(.+)$/);
-    if (!match) continue;
-    const status = normalizeTaskStatus(match[1]);
-    const content = match[2].trim();
-    if (!content) continue;
-    tasks.push({
-      index: tasks.length,
-      status,
-      label: TASK_STATUS_LABELS[status],
-      content,
-    });
-  }
-
-  return tasks;
+  const endIndex = base.indexOf(SUGGESTION_MARKER, taskIndex + TASK_MARKER.length);
+  const taskSection = base.slice(taskIndex + TASK_MARKER.length, endIndex === -1 ? undefined : endIndex);
+  return parseTrackedItems(taskSection, "task").map((task, index) => ({
+    ...task,
+    index,
+    label: TASK_STATUS_LABELS[task.status],
+  }));
 }
 
 export function writeTasks(markdown, tasks) {
@@ -148,10 +150,14 @@ export function writeTasks(markdown, tasks) {
     .map((task) => ({
       status: normalizeTaskStatus(task.status),
       content: String(task.content || "").trim(),
+      source: String(task.source || "").trim(),
+      result: String(task.result || "").trim(),
+      reason: String(task.reason || "").trim(),
+      carriedFrom: String(task.carriedFrom || "").trim(),
     }))
     .filter((task) => task.content);
   const taskBlock = cleanTasks.length
-    ? `${TASK_MARKER}\n\n${cleanTasks.map((task) => `- [${task.status}] ${task.content}`).join("\n")}\n`
+    ? `${TASK_MARKER}\n\n${cleanTasks.map(formatTaskMarkdown).join("\n")}\n`
     : "";
   return `${withoutTasks}${taskBlock}${review ? `\n\n${review.trimStart()}` : "\n"}`;
 }
@@ -163,6 +169,8 @@ export function appendTask(markdown, task) {
   tasks.push({
     status: normalizeTaskStatus(task.status),
     content,
+    source: String(task.source || "").trim(),
+    carriedFrom: String(task.carriedFrom || "").trim(),
   });
   return writeTasks(markdown, tasks);
 }
@@ -177,6 +185,10 @@ export function updateTaskAt(markdown, taskIndex, patch) {
     ...patch,
     status: normalizeTaskStatus(patch.status || tasks[taskIndex].status),
     content: String(patch.content ?? tasks[taskIndex].content).trim(),
+    source: String(patch.source ?? tasks[taskIndex].source ?? "").trim(),
+    result: String(patch.result ?? tasks[taskIndex].result ?? "").trim(),
+    reason: String(patch.reason ?? tasks[taskIndex].reason ?? "").trim(),
+    carriedFrom: String(patch.carriedFrom ?? tasks[taskIndex].carriedFrom ?? "").trim(),
   };
   return writeTasks(markdown, tasks);
 }
@@ -191,22 +203,98 @@ export function removeTaskAt(markdown, taskIndex) {
 }
 
 export function mergeReviewTasks(markdown, review) {
-  const existing = readTasks(markdown);
-  const seen = new Set(existing.map((task) => normalizeTaskContent(task.content)));
-  const extracted = extractReviewTasks(review).filter((content) => {
-    const key = normalizeTaskContent(content);
+  const existingTasks = readTasks(markdown);
+  const existingSuggestions = readTaskSuggestions(markdown);
+  const seen = new Set([
+    ...existingTasks.map((task) => normalizeTaskContent(task.content)),
+    ...existingSuggestions.map((suggestion) => normalizeTaskContent(suggestion.content)),
+  ]);
+  const extracted = extractReviewSuggestions(review).filter((suggestion) => {
+    const key = normalizeTaskContent(suggestion.content);
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
   if (!extracted.length) return markdown;
-  return writeTasks(markdown, [
-    ...existing,
-    ...extracted.map((content) => ({
-      status: "todo",
-      content,
-    })),
-  ]);
+  return writeTaskSuggestions(markdown, [...existingSuggestions, ...extracted]);
+}
+
+export function readTaskSuggestions(markdown) {
+  const base = stripReview(markdown || "");
+  const suggestionIndex = base.indexOf(SUGGESTION_MARKER);
+  if (suggestionIndex === -1) return [];
+  const taskIndex = base.indexOf(TASK_MARKER, suggestionIndex + SUGGESTION_MARKER.length);
+  const suggestionSection = base.slice(suggestionIndex + SUGGESTION_MARKER.length, taskIndex === -1 ? undefined : taskIndex);
+  return parseTrackedItems(suggestionSection, "suggestion").map((suggestion, index) => ({
+    ...suggestion,
+    index,
+  }));
+}
+
+export function writeTaskSuggestions(markdown, suggestions) {
+  const reviewIndex = markdown.indexOf(REVIEW_MARKER);
+  const withoutReview = reviewIndex === -1 ? markdown : markdown.slice(0, reviewIndex);
+  const review = reviewIndex === -1 ? "" : markdown.slice(reviewIndex);
+  const withoutSuggestions = stripSuggestions(withoutReview).trimEnd();
+  const cleanSuggestions = suggestions
+    .map((suggestion) => ({
+      content: String(suggestion.content || "").trim(),
+      source: String(suggestion.source || "").trim(),
+    }))
+    .filter((suggestion) => suggestion.content);
+  const suggestionBlock = cleanSuggestions.length
+    ? `${SUGGESTION_MARKER}\n\n${cleanSuggestions.map(formatSuggestionMarkdown).join("\n")}\n`
+    : "";
+  return `${withoutSuggestions}${suggestionBlock}${review ? `\n\n${review.trimStart()}` : "\n"}`;
+}
+
+export function acceptTaskSuggestion(markdown, suggestionIndex, content) {
+  const suggestions = readTaskSuggestions(markdown);
+  if (!Number.isInteger(suggestionIndex) || suggestionIndex < 0 || suggestionIndex >= suggestions.length) {
+    throw new Error("没有找到要采纳的 AI 建议。");
+  }
+  const suggestion = suggestions[suggestionIndex];
+  const taskContent = String(content ?? suggestion.content).trim();
+  if (!taskContent) throw new Error("下一步内容不能为空。");
+  suggestions.splice(suggestionIndex, 1);
+  const withoutSuggestion = writeTaskSuggestions(markdown, suggestions);
+  return appendTask(withoutSuggestion, {
+    status: "todo",
+    content: taskContent,
+    source: suggestion.source || "AI 建议",
+  });
+}
+
+export function removeTaskSuggestionAt(markdown, suggestionIndex) {
+  const suggestions = readTaskSuggestions(markdown);
+  if (!Number.isInteger(suggestionIndex) || suggestionIndex < 0 || suggestionIndex >= suggestions.length) {
+    throw new Error("没有找到要忽略的 AI 建议。");
+  }
+  suggestions.splice(suggestionIndex, 1);
+  return writeTaskSuggestions(markdown, suggestions);
+}
+
+export function extractOpenTasks(markdown) {
+  return readTasks(markdown).filter((task) => task.status === "todo" || task.status === "next");
+}
+
+export function mergeCarriedTasks(markdown, tasks, fromDate) {
+  const existing = readTasks(markdown);
+  const seen = new Set(existing.map((task) => normalizeTaskContent(task.content)));
+  const carried = tasks.filter((task) => {
+    if (task.status !== "todo" && task.status !== "next") return false;
+    const key = normalizeTaskContent(task.content);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (!carried.length) return markdown;
+  return writeTasks(markdown, [...existing, ...carried.map((task) => ({
+    status: "next",
+    content: task.content,
+    source: `从 ${fromDate} 带入`,
+    carriedFrom: fromDate,
+  }))]);
 }
 
 export function normalizeTaskStatus(status) {
@@ -218,21 +306,78 @@ export function taskStatusLabels() {
 }
 
 function extractReviewTasks(review) {
+  return extractReviewSuggestions(review).map((suggestion) => suggestion.content);
+}
+
+function extractReviewSuggestions(review) {
   const lines = String(review || "").split("\n");
-  const tasks = [];
+  const suggestions = [];
   let active = false;
+  let section = "";
 
   for (const line of lines) {
     if (line.startsWith("### ")) {
       active = /下一步|最小练习|待验证|继续|回看|复习/.test(line);
+      section = line.slice(4).replace(/^\d+\.\s*/, "").trim();
       continue;
     }
     if (!active || !line.startsWith("- ")) continue;
     const content = line.slice(2).trim();
-    if (content && !/^记录里暂时看不出/.test(content)) tasks.push(content);
+    if (content && !/^记录里暂时看不出/.test(content)) {
+      suggestions.push({
+        content,
+        source: section ? `AI 复盘 / ${section}` : "AI 复盘",
+      });
+    }
   }
 
-  return tasks.slice(0, 5);
+  return suggestions.slice(0, 5);
+}
+
+function parseTrackedItems(section, type) {
+  const lines = String(section || "").split("\n");
+  const items = [];
+  let current = null;
+
+  for (const line of lines) {
+    const itemMatch = line.match(/^-\s+\[([a-z]+)\]\s+(.+)$/);
+    if (itemMatch) {
+      current = {
+        status: type === "task" ? normalizeTaskStatus(itemMatch[1]) : itemMatch[1],
+        content: itemMatch[2].trim(),
+      };
+      if (current.content) items.push(current);
+      continue;
+    }
+
+    const metaMatch = line.match(/^\s{2,}-\s+([^：:]+)[：:]\s*(.+)$/);
+    if (!current || !metaMatch) continue;
+    const key = metaMatch[1].trim();
+    const value = metaMatch[2].trim();
+    if (key === "来源") current.source = value;
+    if (key === "结果") current.result = value;
+    if (key === "原因") current.reason = value;
+    if (key === "带入自") current.carriedFrom = value;
+  }
+
+  return items;
+}
+
+function formatTaskMarkdown(task) {
+  return [
+    `- [${task.status}] ${task.content}`,
+    task.source ? `  - 来源：${task.source}` : "",
+    task.carriedFrom ? `  - 带入自：${task.carriedFrom}` : "",
+    task.result ? `  - 结果：${task.result}` : "",
+    task.reason ? `  - 原因：${task.reason}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+function formatSuggestionMarkdown(suggestion) {
+  return [
+    `- [pending] ${suggestion.content}`,
+    suggestion.source ? `  - 来源：${suggestion.source}` : "",
+  ].filter(Boolean).join("\n");
 }
 
 function normalizeTaskContent(content) {

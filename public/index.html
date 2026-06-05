@@ -109,6 +109,30 @@
                 <h3 id="taskTitle">下一步追踪</h3>
                 <span class="task-count" id="taskCount">0 项</span>
               </div>
+              <div class="carryover-panel" id="carryoverPanel" hidden>
+                <div>
+                  <p class="section-label" id="carryoverTitle">历史未完成</p>
+                  <div class="carryover-list" id="carryoverList"></div>
+                </div>
+                <div class="compact-actions">
+                  <button class="primary-button" id="carryoverButton" type="button">带到今天</button>
+                  <button class="mode-button" id="dismissCarryoverButton" type="button">忽略</button>
+                </div>
+              </div>
+              <div class="suggestion-panel" id="suggestionPanel" hidden>
+                <div class="task-subhead">
+                  <h4>AI 建议待确认</h4>
+                  <span class="task-count" id="suggestionCount">0 项</span>
+                </div>
+                <div class="suggestion-list" id="suggestionList"></div>
+              </div>
+              <div class="task-focus" id="taskFocus" hidden>
+                <div class="task-subhead">
+                  <h4>今日焦点</h4>
+                  <span class="task-count" id="focusCount">0 项</span>
+                </div>
+                <div class="focus-list" id="focusList"></div>
+              </div>
               <form class="task-form" id="taskForm">
                 <select id="taskStatusInput" aria-label="下一步状态">
                   <option value="todo">今日待验证</option>
@@ -123,7 +147,7 @@
                 </button>
               </form>
               <div class="task-list" id="taskList">
-                <div class="empty-state">复盘后会自动沉淀下一步，也可以手动添加。</div>
+                <div class="empty-state">暂无下一步。</div>
               </div>
             </section>
             <div class="timeline-list" id="timelineList">

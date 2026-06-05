@@ -7,6 +7,7 @@ import {
   json,
   mergeReviewTasks,
   noteKey,
+  readTaskSuggestions,
   readTasks,
   stripReview,
   validateDate,
@@ -89,6 +90,7 @@ export async function onRequestPost(context) {
     model: result.model,
     review: result.review,
     tasks: readTasks(updatedMarkdown),
+    suggestions: readTaskSuggestions(updatedMarkdown),
     markdown: updatedMarkdown,
   });
 }

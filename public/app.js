@@ -11,6 +11,7 @@ const TASK_STATUS_LABELS = {
   done: "已完成",
   dropped: "已放弃",
 };
+const TASK_STATUS_ORDER = ["todo", "next", "done", "dropped"];
 
 const els = {
   todayLabel: document.querySelector("#todayLabel"),
@@ -34,6 +35,17 @@ const els = {
   reviewModeButtons: document.querySelectorAll("[data-review-mode]"),
   reviewOutput: document.querySelector("#reviewOutput"),
   taskCount: document.querySelector("#taskCount"),
+  carryoverPanel: document.querySelector("#carryoverPanel"),
+  carryoverTitle: document.querySelector("#carryoverTitle"),
+  carryoverList: document.querySelector("#carryoverList"),
+  carryoverButton: document.querySelector("#carryoverButton"),
+  dismissCarryoverButton: document.querySelector("#dismissCarryoverButton"),
+  suggestionPanel: document.querySelector("#suggestionPanel"),
+  suggestionCount: document.querySelector("#suggestionCount"),
+  suggestionList: document.querySelector("#suggestionList"),
+  taskFocus: document.querySelector("#taskFocus"),
+  focusCount: document.querySelector("#focusCount"),
+  focusList: document.querySelector("#focusList"),
   taskForm: document.querySelector("#taskForm"),
   taskStatusInput: document.querySelector("#taskStatusInput"),
   taskContentInput: document.querySelector("#taskContentInput"),
@@ -96,10 +108,31 @@ function bindEvents() {
     updateTaskStatus(Number(select.dataset.taskStatus), select.value);
   });
   els.taskList.addEventListener("click", (event) => {
+    const statusButton = event.target.closest("[data-task-status-value]");
+    if (statusButton) {
+      updateTaskStatus(Number(statusButton.dataset.taskIndex), statusButton.dataset.taskStatusValue);
+      return;
+    }
     const button = event.target.closest("[data-delete-task]");
     if (!button) return;
     deleteTask(Number(button.dataset.deleteTask));
   });
+  els.suggestionList.addEventListener("click", (event) => {
+    const acceptButton = event.target.closest("[data-accept-suggestion]");
+    if (acceptButton) {
+      acceptSuggestion(Number(acceptButton.dataset.acceptSuggestion), false);
+      return;
+    }
+    const editButton = event.target.closest("[data-edit-suggestion]");
+    if (editButton) {
+      acceptSuggestion(Number(editButton.dataset.editSuggestion), true);
+      return;
+    }
+    const ignoreButton = event.target.closest("[data-ignore-suggestion]");
+    if (ignoreButton) ignoreSuggestion(Number(ignoreButton.dataset.ignoreSuggestion));
+  });
+  els.carryoverButton.addEventListener("click", carryoverTasks);
+  els.dismissCarryoverButton.addEventListener("click", dismissCarryover);
   els.settingsButton.addEventListener("click", () => {
     els.passwordInput.value = state.password;
     els.settingsDialog.showModal();
@@ -159,6 +192,7 @@ async function refreshDay() {
   try {
     const data = await api(`/api/day?date=${encodeURIComponent(state.selectedDate)}`);
     renderDay(data.markdown || emptyMarkdown(state.selectedDate));
+    refreshTaskMeta();
     setStatus(data.exists ? "已同步" : "新日期");
   } catch (error) {
     showError(error);
@@ -240,6 +274,7 @@ async function runReview() {
     });
     renderReview(data.review);
     renderDay(data.markdown);
+    applyTaskResponse(data);
     setStatus(isLearningMode ? "学习复盘完成" : "复盘完成");
   } catch (error) {
     showReviewError(error);
@@ -269,6 +304,7 @@ async function createTask(event) {
       }),
     });
     renderDay(data.markdown);
+    applyTaskResponse(data);
     els.taskContentInput.value = "";
     setStatus("已添加下一步");
   } catch (error) {
@@ -280,6 +316,17 @@ async function createTask(event) {
 
 async function updateTaskStatus(taskIndex, status) {
   if (!Number.isInteger(taskIndex)) return;
+  const patch = { status };
+  if (status === "done") {
+    const result = window.prompt("写一句完成结果：", "");
+    if (result === null) return;
+    patch.result = result.trim();
+  }
+  if (status === "dropped") {
+    const reason = window.prompt("写一句放弃原因：", "");
+    if (reason === null) return;
+    patch.reason = reason.trim();
+  }
 
   setBusy(true);
   setStatus("更新中");
@@ -289,10 +336,11 @@ async function updateTaskStatus(taskIndex, status) {
       body: JSON.stringify({
         date: state.selectedDate,
         taskIndex,
-        status,
+        ...patch,
       }),
     });
     renderDay(data.markdown);
+    applyTaskResponse(data);
     setStatus("下一步已更新");
   } catch (error) {
     showTaskError(error);
@@ -300,6 +348,113 @@ async function updateTaskStatus(taskIndex, status) {
   } finally {
     setBusy(false);
   }
+}
+
+async function acceptSuggestion(suggestionIndex, shouldEdit) {
+  if (!Number.isInteger(suggestionIndex)) return;
+  const suggestion = getCurrentSuggestion(suggestionIndex);
+  let content = suggestion?.content || "";
+  if (shouldEdit) {
+    const edited = window.prompt("编辑后采纳：", content);
+    if (edited === null) return;
+    content = edited.trim();
+    if (!content) {
+      setStatus("内容不能为空");
+      return;
+    }
+  }
+
+  setBusy(true);
+  setStatus("采纳中");
+  try {
+    const data = await api("/api/tasks/suggestion", {
+      method: "POST",
+      body: JSON.stringify({
+        date: state.selectedDate,
+        suggestionIndex,
+        action: "accept",
+        content,
+      }),
+    });
+    renderDay(data.markdown);
+    applyTaskResponse(data);
+    setStatus("已采纳建议");
+  } catch (error) {
+    showTaskError(error);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function ignoreSuggestion(suggestionIndex) {
+  if (!Number.isInteger(suggestionIndex)) return;
+
+  setBusy(true);
+  setStatus("忽略中");
+  try {
+    const data = await api("/api/tasks/suggestion", {
+      method: "POST",
+      body: JSON.stringify({
+        date: state.selectedDate,
+        suggestionIndex,
+        action: "ignore",
+      }),
+    });
+    renderDay(data.markdown);
+    applyTaskResponse(data);
+    setStatus("已忽略建议");
+  } catch (error) {
+    showTaskError(error);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function carryoverTasks() {
+  const fromDate = els.carryoverPanel.dataset.fromDate;
+  if (!fromDate) return;
+
+  setBusy(true);
+  setStatus("带入中");
+  try {
+    const data = await api("/api/tasks/carryover", {
+      method: "POST",
+      body: JSON.stringify({
+        date: state.selectedDate,
+        fromDate,
+      }),
+    });
+    renderDay(data.markdown);
+    applyTaskResponse(data);
+    setStatus("已带到今天");
+  } catch (error) {
+    showTaskError(error);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function dismissCarryover() {
+  const fromDate = els.carryoverPanel.dataset.fromDate;
+  if (fromDate) sessionStorage.setItem(carryoverDismissKey(fromDate), "1");
+  renderCarryover(null);
+}
+
+async function refreshTaskMeta() {
+  try {
+    const data = await api(`/api/tasks?date=${encodeURIComponent(state.selectedDate)}`);
+    if (Array.isArray(data.tasks)) renderTasks(data.tasks);
+    if (Array.isArray(data.suggestions)) renderSuggestions(data.suggestions);
+    renderCarryover(data.carryover);
+  } catch (error) {
+    showTaskError(error);
+  }
+}
+
+function applyTaskResponse(data) {
+  if (Array.isArray(data.tasks)) renderTasks(data.tasks);
+  if (Array.isArray(data.suggestions)) renderSuggestions(data.suggestions);
+  if (Object.prototype.hasOwnProperty.call(data, "carryover")) renderCarryover(data.carryover);
 }
 
 async function deleteTask(taskIndex) {
@@ -318,6 +473,7 @@ async function deleteTask(taskIndex) {
       }),
     });
     renderDay(data.markdown);
+    applyTaskResponse(data);
     setStatus("下一步已删除");
   } catch (error) {
     showTaskError(error);
@@ -410,10 +566,12 @@ function renderDay(markdown) {
   const entries = parseEntries(markdown);
   const review = parseLatestReview(markdown);
   const tasks = parseTasks(markdown);
+  const suggestions = parseSuggestions(markdown);
   els.markdownView.textContent = markdown;
   els.entryCount.textContent = `${entries.length} 条记录`;
   els.lastSavedAt.textContent = entries.length ? `最近 ${entries.at(-1).time}` : "还没有开始";
   renderTasks(tasks);
+  renderSuggestions(suggestions);
   els.timelineList.innerHTML = entries.length
     ? entries.map(renderTimelineItem).join("")
     : '<div class="empty-state">这一天还没有记录。先在上面的输入框写一条。</div>';
@@ -486,34 +644,121 @@ function parseTasks(markdown) {
       index: tasks.length,
       status,
       content,
+      source: "",
+      result: "",
+      reason: "",
+      carriedFrom: "",
     });
   }
 
   return tasks;
 }
 
+function parseSuggestions(markdown) {
+  const reviewIndex = markdown.indexOf("## AI 复盘");
+  const base = reviewIndex === -1 ? markdown : markdown.slice(0, reviewIndex);
+  const suggestionIndex = base.indexOf("## AI 建议待确认");
+  if (suggestionIndex === -1) return [];
+  const lines = base.slice(suggestionIndex).split("\n");
+  const suggestions = [];
+
+  for (const line of lines) {
+    const match = line.match(/^-\s+\[[a-z]+\]\s+(.+)$/);
+    if (!match) continue;
+    suggestions.push({
+      index: suggestions.length,
+      content: match[1].trim(),
+      source: "",
+    });
+  }
+
+  return suggestions;
+}
+
 function renderTasks(tasks) {
   els.taskCount.textContent = `${tasks.length} 项`;
+  renderFocus(tasks);
   els.taskList.innerHTML = tasks.length
     ? tasks.map(renderTaskItem).join("")
-    : '<div class="empty-state">复盘后会自动沉淀下一步，也可以手动添加。</div>';
+    : '<div class="empty-state">暂无下一步。</div>';
 }
 
 function renderTaskItem(task) {
-  const options = Object.entries(TASK_STATUS_LABELS)
-    .map(([value, label]) => `<option value="${value}"${value === task.status ? " selected" : ""}>${label}</option>`)
+  const statusButtons = TASK_STATUS_ORDER
+    .map((value) => `
+      <button class="status-chip${value === task.status ? " active" : ""}" type="button" data-task-index="${task.index}" data-task-status-value="${value}">
+        ${TASK_STATUS_LABELS[value]}
+      </button>
+    `)
     .join("");
+  const meta = [
+    task.source ? `来源：${task.source}` : "",
+    task.carriedFrom ? `带入自：${task.carriedFrom}` : "",
+    task.result ? `结果：${task.result}` : "",
+    task.reason ? `原因：${task.reason}` : "",
+  ].filter(Boolean).map((item) => `<span>${escapeHtml(item)}</span>`).join("");
   return `
     <article class="task-item" data-task-state="${escapeAttr(task.status)}">
-      <select data-task-status="${task.index}" aria-label="更新下一步状态">
-        ${options}
-      </select>
-      <p>${escapeHtml(task.content)}</p>
+      <div class="task-status-row">${statusButtons}</div>
+      <div class="task-main">
+        <p>${escapeHtml(task.content)}</p>
+        ${meta ? `<div class="task-meta">${meta}</div>` : ""}
+      </div>
       <button class="delete-entry-button" type="button" data-delete-task="${task.index}" aria-label="删除下一步" title="删除这个下一步">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
       </button>
     </article>
   `;
+}
+
+function renderFocus(tasks) {
+  const focusTasks = tasks.filter((task) => task.status === "todo" || task.status === "next").slice(0, 3);
+  els.taskFocus.hidden = !focusTasks.length;
+  els.focusCount.textContent = `${focusTasks.length} 项`;
+  els.focusList.innerHTML = focusTasks.map((task) => `<p>${escapeHtml(task.content)}</p>`).join("");
+}
+
+function renderSuggestions(suggestions) {
+  els.suggestionPanel.hidden = !suggestions.length;
+  els.suggestionCount.textContent = `${suggestions.length} 项`;
+  els.suggestionList.innerHTML = suggestions.map(renderSuggestionItem).join("");
+}
+
+function renderSuggestionItem(suggestion) {
+  return `
+    <article class="suggestion-item">
+      <p>${escapeHtml(suggestion.content)}</p>
+      ${suggestion.source ? `<span>${escapeHtml(suggestion.source)}</span>` : ""}
+      <div class="compact-actions">
+        <button class="primary-button" type="button" data-accept-suggestion="${suggestion.index}">采纳</button>
+        <button class="mode-button" type="button" data-edit-suggestion="${suggestion.index}">编辑</button>
+        <button class="mode-button" type="button" data-ignore-suggestion="${suggestion.index}">忽略</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderCarryover(carryover) {
+  if (!carryover || !carryover.tasks?.length || sessionStorage.getItem(carryoverDismissKey(carryover.fromDate))) {
+    els.carryoverPanel.hidden = true;
+    els.carryoverPanel.dataset.fromDate = "";
+    els.carryoverList.innerHTML = "";
+    return;
+  }
+  els.carryoverPanel.hidden = false;
+  els.carryoverPanel.dataset.fromDate = carryover.fromDate;
+  els.carryoverTitle.textContent = `${carryover.fromDate} 未完成`;
+  els.carryoverList.innerHTML = carryover.tasks
+    .map((task) => `<p>${escapeHtml(task.content)}</p>`)
+    .join("");
+}
+
+function getCurrentSuggestion(suggestionIndex) {
+  return parseSuggestions(els.markdownView.textContent).find((suggestion) => suggestion.index === suggestionIndex);
+}
+
+function carryoverDismissKey(fromDate) {
+  return `dismissCarryover:${state.selectedDate}:${fromDate}`;
 }
 
 function normalizeEntry(entry) {
@@ -596,6 +841,12 @@ function setBusy(isBusy) {
     control.disabled = isBusy;
   });
   els.taskList.querySelectorAll("button,select").forEach((control) => {
+    control.disabled = isBusy;
+  });
+  els.suggestionList.querySelectorAll("button").forEach((control) => {
+    control.disabled = isBusy;
+  });
+  els.carryoverPanel.querySelectorAll("button").forEach((control) => {
     control.disabled = isBusy;
   });
   els.timelineList.querySelectorAll("[data-entry-index]").forEach((button) => {

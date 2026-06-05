@@ -5,10 +5,12 @@ import { onRequestPost as reviewDay } from "../functions/api/review/index.js";
 import { onRequestGet as searchNotes } from "../functions/api/search/index.js";
 import { onRequestGet as listTags } from "../functions/api/tags/index.js";
 import {
+  onRequestCarryover as carryOverTasks,
   onRequestDelete as deleteTask,
   onRequestGet as getTasks,
   onRequestPatch as updateTask,
   onRequestPost as createTask,
+  onRequestSuggestion as handleTaskSuggestion,
 } from "../functions/api/tasks/index.js";
 
 const routes = {
@@ -24,6 +26,8 @@ const routes = {
   "POST /api/tasks": createTask,
   "PATCH /api/tasks": updateTask,
   "DELETE /api/tasks": deleteTask,
+  "POST /api/tasks/suggestion": handleTaskSuggestion,
+  "POST /api/tasks/carryover": carryOverTasks,
 };
 
 export default {
