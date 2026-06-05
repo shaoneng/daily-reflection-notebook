@@ -701,7 +701,7 @@ function renderTaskItem(task) {
     <article class="task-item" data-task-state="${escapeAttr(task.status)}">
       <div class="task-status-row">${statusButtons}</div>
       <div class="task-main">
-        <p>${escapeHtml(task.content)}</p>
+        <p>${inlineMarkdownToHtml(task.content)}</p>
         ${meta ? `<div class="task-meta">${meta}</div>` : ""}
       </div>
       <button class="delete-entry-button" type="button" data-delete-task="${task.index}" aria-label="删除下一步" title="删除这个下一步">
@@ -715,7 +715,7 @@ function renderFocus(tasks) {
   const focusTasks = tasks.filter((task) => task.status === "todo" || task.status === "next").slice(0, 3);
   els.taskFocus.hidden = !focusTasks.length;
   els.focusCount.textContent = `${focusTasks.length} 项`;
-  els.focusList.innerHTML = focusTasks.map((task) => `<p>${escapeHtml(task.content)}</p>`).join("");
+  els.focusList.innerHTML = focusTasks.map((task) => `<p>${inlineMarkdownToHtml(task.content)}</p>`).join("");
 }
 
 function renderSuggestions(suggestions) {
@@ -727,7 +727,7 @@ function renderSuggestions(suggestions) {
 function renderSuggestionItem(suggestion) {
   return `
     <article class="suggestion-item">
-      <p>${escapeHtml(suggestion.content)}</p>
+      <p>${inlineMarkdownToHtml(suggestion.content)}</p>
       ${suggestion.source ? `<span>${escapeHtml(suggestion.source)}</span>` : ""}
       <div class="compact-actions">
         <button class="primary-button" type="button" data-accept-suggestion="${suggestion.index}">采纳</button>
@@ -749,7 +749,7 @@ function renderCarryover(carryover) {
   els.carryoverPanel.dataset.fromDate = carryover.fromDate;
   els.carryoverTitle.textContent = `${carryover.fromDate} 未完成`;
   els.carryoverList.innerHTML = carryover.tasks
-    .map((task) => `<p>${escapeHtml(task.content)}</p>`)
+    .map((task) => `<p>${inlineMarkdownToHtml(task.content)}</p>`)
     .join("");
 }
 
@@ -804,31 +804,39 @@ function syncReviewMode() {
 function markdownToHtml(markdown) {
   const lines = markdown.split("\n");
   let html = "";
-  let inList = false;
+  let listType = "";
+
+  const closeList = () => {
+    if (!listType) return;
+    html += listType === "ol" ? "</ol>" : "</ul>";
+    listType = "";
+  };
 
   for (const line of lines) {
     if (line.startsWith("### ")) {
-      if (inList) {
-        html += "</ul>";
-        inList = false;
-      }
-      html += `<h4>${escapeHtml(line.slice(4))}</h4>`;
+      closeList();
+      html += `<h4>${inlineMarkdownToHtml(line.slice(4))}</h4>`;
     } else if (line.startsWith("- ")) {
-      if (!inList) {
+      if (listType !== "ul") {
+        closeList();
         html += "<ul>";
-        inList = true;
+        listType = "ul";
       }
-      html += `<li>${escapeHtml(line.slice(2))}</li>`;
+      html += `<li>${inlineMarkdownToHtml(line.slice(2))}</li>`;
+    } else if (/^\d+\.\s+/.test(line)) {
+      if (listType !== "ol") {
+        closeList();
+        html += "<ol>";
+        listType = "ol";
+      }
+      html += `<li>${inlineMarkdownToHtml(line.replace(/^\d+\.\s+/, ""))}</li>`;
     } else if (line.trim()) {
-      if (inList) {
-        html += "</ul>";
-        inList = false;
-      }
-      html += `<p>${escapeHtml(line)}</p>`;
+      closeList();
+      html += `<p>${inlineMarkdownToHtml(line)}</p>`;
     }
   }
 
-  if (inList) html += "</ul>";
+  closeList();
   return html || "<p>还没有生成复盘。</p>";
 }
 
@@ -921,6 +929,25 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function inlineMarkdownToHtml(value) {
+  const codeTokens = [];
+  let html = escapeHtml(value).replace(/`([^`]+)`/g, (_, code) => {
+    const token = `@@CODE_${codeTokens.length}@@`;
+    codeTokens.push(`<code>${code}</code>`);
+    return token;
+  });
+
+  html = html
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/__([^_]+)__/g, "<strong>$1</strong>");
+
+  codeTokens.forEach((codeHtml, index) => {
+    html = html.replaceAll(`@@CODE_${index}@@`, codeHtml);
+  });
+
+  return html;
 }
 
 function escapeAttr(value) {
