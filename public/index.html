@@ -133,6 +133,16 @@
                 </div>
                 <div class="focus-list" id="focusList"></div>
               </div>
+              <div class="task-trend" id="taskTrend">
+                <div class="task-subhead">
+                  <h4>长期追踪</h4>
+                  <span class="task-count" id="taskTrendRange">近 30 天</span>
+                </div>
+                <div class="task-trend-grid" id="taskTrendSummary">
+                  <div class="empty-state">正在读取追踪数据...</div>
+                </div>
+                <div class="task-stale-list" id="taskStaleList"></div>
+              </div>
               <form class="task-form" id="taskForm">
                 <select id="taskStatusInput" aria-label="下一步状态">
                   <option value="todo">今日待验证</option>
@@ -179,6 +189,7 @@
       </form>
     </dialog>
 
-    <script src="/app.js" type="module"></script>
+    <script src="/app.js"></script>
+    <script src="/task-stats.js"></script>
   </body>
 </html>

@@ -10,6 +10,7 @@ import {
   onRequestGet as getTasks,
   onRequestPatch as updateTask,
   onRequestPost as createTask,
+  onRequestStats as getTaskStats,
   onRequestSuggestion as handleTaskSuggestion,
 } from "../functions/api/tasks/index.js";
 
@@ -23,6 +24,7 @@ const routes = {
   "GET /api/search": searchNotes,
   "GET /api/tags": listTags,
   "GET /api/tasks": getTasks,
+  "GET /api/tasks/stats": getTaskStats,
   "POST /api/tasks": createTask,
   "PATCH /api/tasks": updateTask,
   "DELETE /api/tasks": deleteTask,

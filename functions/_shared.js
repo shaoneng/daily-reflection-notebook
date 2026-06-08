@@ -8,6 +8,20 @@ const TASK_STATUS_LABELS = {
   done: "已完成",
   dropped: "已放弃",
 };
+const TASK_ACTION_HINTS = [
+  "完成", "写", "整理", "复盘", "回看", "复习", "练习", "对照", "拆解", "验证", "测试", "记录", "列出",
+  "读", "重读", "看", "找出", "输出", "提交", "更新", "修改", "做", "尝试", "用", "把", "给",
+];
+const WEAK_SUGGESTION_PATTERNS = [
+  /^继续(学习|研究|关注|思考|推进)?$/,
+  /^进一步(学习|研究|优化|完善|推进)?$/,
+  /^保持(学习|记录|复盘|关注)?$/,
+  /^加强(学习|理解|练习)?$/,
+  /^提升(能力|效率|认知|理解)?$/,
+  /^多(学习|练习|复盘|总结)$/,
+  /^做好(规划|复盘|总结)?$/,
+  /^持续(学习|记录|优化|改进)?$/,
+];
 
 export function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -130,10 +144,7 @@ export function appendReview(markdown, review, generatedAt, modeLabel = "") {
 
 export function readTasks(markdown) {
   const base = stripReview(markdown || "");
-  const taskIndex = base.indexOf(TASK_MARKER);
-  if (taskIndex === -1) return [];
-  const endIndex = base.indexOf(SUGGESTION_MARKER, taskIndex + TASK_MARKER.length);
-  const taskSection = base.slice(taskIndex + TASK_MARKER.length, endIndex === -1 ? undefined : endIndex);
+  const taskSection = readMarkdownSection(base, "下一步追踪", ["AI 建议待确认"]);
   return parseTrackedItems(taskSection, "task").map((task, index) => ({
     ...task,
     index,
@@ -205,26 +216,16 @@ export function removeTaskAt(markdown, taskIndex) {
 export function mergeReviewTasks(markdown, review) {
   const existingTasks = readTasks(markdown);
   const existingSuggestions = readTaskSuggestions(markdown);
-  const seen = new Set([
-    ...existingTasks.map((task) => normalizeTaskContent(task.content)),
-    ...existingSuggestions.map((suggestion) => normalizeTaskContent(suggestion.content)),
-  ]);
-  const extracted = extractReviewSuggestions(review).filter((suggestion) => {
-    const key = normalizeTaskContent(suggestion.content);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-  if (!extracted.length) return markdown;
-  return writeTaskSuggestions(markdown, [...existingSuggestions, ...extracted]);
+  const extracted = dedupeTaskSuggestions([
+    ...existingSuggestions,
+    ...extractReviewSuggestions(review),
+  ], existingTasks);
+  return writeTaskSuggestions(markdown, extracted);
 }
 
 export function readTaskSuggestions(markdown) {
   const base = stripReview(markdown || "");
-  const suggestionIndex = base.indexOf(SUGGESTION_MARKER);
-  if (suggestionIndex === -1) return [];
-  const taskIndex = base.indexOf(TASK_MARKER, suggestionIndex + SUGGESTION_MARKER.length);
-  const suggestionSection = base.slice(suggestionIndex + SUGGESTION_MARKER.length, taskIndex === -1 ? undefined : taskIndex);
+  const suggestionSection = readMarkdownSection(base, "AI 建议待确认", ["下一步追踪"]);
   return parseTrackedItems(suggestionSection, "suggestion").map((suggestion, index) => ({
     ...suggestion,
     index,
@@ -322,8 +323,8 @@ function extractReviewSuggestions(review) {
       continue;
     }
     if (!active || !line.startsWith("- ")) continue;
-    const content = line.slice(2).trim();
-    if (content && !/^记录里暂时看不出/.test(content)) {
+    const content = cleanSuggestionContent(line.slice(2));
+    if (isActionableSuggestion(content)) {
       suggestions.push({
         content,
         source: section ? `AI 复盘 / ${section}` : "AI 复盘",
@@ -331,7 +332,119 @@ function extractReviewSuggestions(review) {
     }
   }
 
-  return suggestions.slice(0, 5);
+  return dedupeTaskSuggestions(suggestions).slice(0, 5);
+}
+
+function dedupeTaskSuggestions(suggestions, existingTasks = []) {
+  const seen = new Set(existingTasks.map((task) => taskSignature(task.content)));
+  const existingContents = existingTasks.map((task) => task.content);
+  const accepted = [];
+
+  for (const suggestion of suggestions) {
+    const content = cleanSuggestionContent(suggestion.content);
+    if (!isActionableSuggestion(content)) continue;
+
+    const signature = taskSignature(content);
+    if (!signature || seen.has(signature)) continue;
+    if (existingContents.some((taskContent) => areSimilarTasks(taskContent, content))) continue;
+
+    const similarIndex = accepted.findIndex((item) => areSimilarTasks(item.content, content));
+    if (similarIndex >= 0) {
+      if (scoreSuggestionQuality(content) > scoreSuggestionQuality(accepted[similarIndex].content)) {
+        accepted[similarIndex] = {
+          content,
+          source: mergeSuggestionSources(accepted[similarIndex].source, suggestion.source),
+        };
+      } else {
+        accepted[similarIndex].source = mergeSuggestionSources(accepted[similarIndex].source, suggestion.source);
+      }
+      seen.add(signature);
+      continue;
+    }
+
+    seen.add(signature);
+    accepted.push({
+      content,
+      source: String(suggestion.source || "").trim(),
+    });
+  }
+
+  return accepted.slice(0, 5);
+}
+
+function cleanSuggestionContent(content) {
+  return String(content || "")
+    .replace(/^\s*[-*]\s+/, "")
+    .replace(/^\s*\d+[.)、]\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isActionableSuggestion(content) {
+  const value = cleanSuggestionContent(content);
+  if (!value) return false;
+  if (/^(记录里暂时看不出|近一周记录里暂时看不出|暂无|无|没有证据)/.test(value)) return false;
+  if (value.length < 8 || value.length > 120) return false;
+  if (WEAK_SUGGESTION_PATTERNS.some((pattern) => pattern.test(value))) return false;
+  if (!TASK_ACTION_HINTS.some((hint) => value.includes(hint))) return false;
+  return true;
+}
+
+function scoreSuggestionQuality(content) {
+  const value = cleanSuggestionContent(content);
+  let score = Math.min(value.length, 80);
+  if (/\d+\s*(分钟|小时|天|个|条|遍|次|步|页)/.test(value)) score += 28;
+  if (/今天|明天|早起后|上午|下午|晚上|下一次|本周/.test(value)) score += 16;
+  if (/完成即停|交给|输出|写出|列出|标出|对照/.test(value)) score += 12;
+  if (/继续|进一步|加强|提升|完善/.test(value)) score -= 18;
+  return score;
+}
+
+function taskSignature(content) {
+  return normalizeTaskContent(content)
+    .replace(/[，。！？、；：,.!?;:"'“”‘’（）()【】[\]\s]/g, "")
+    .replace(/\d+/g, "#")
+    .replace(/今天|明天|本周|下一次|早起后|上午|下午|晚上/g, "");
+}
+
+function areSimilarTasks(a, b) {
+  const left = taskSignature(a);
+  const right = taskSignature(b);
+  if (!left || !right) return false;
+  if (left === right) return true;
+  if (left.length >= 12 && right.length >= 12 && (left.includes(right) || right.includes(left))) return true;
+
+  const leftTokens = taskTokens(left);
+  const rightTokens = taskTokens(right);
+  const tokenOverlap = leftTokens.filter((token) => rightTokens.includes(token)).length;
+  if (leftTokens.length && rightTokens.length && tokenOverlap / Math.min(leftTokens.length, rightTokens.length) >= 0.72) {
+    return true;
+  }
+
+  const leftBigrams = characterBigrams(left);
+  const rightBigrams = characterBigrams(right);
+  if (!leftBigrams.length || !rightBigrams.length) return false;
+  const rightSet = new Set(rightBigrams);
+  const overlap = leftBigrams.filter((item) => rightSet.has(item)).length;
+  return overlap / Math.min(leftBigrams.length, rightBigrams.length) >= 0.62;
+}
+
+function taskTokens(value) {
+  return String(value || "")
+    .split(/[#/\-|_]+/)
+    .flatMap((part) => part.match(/[\p{L}\p{N}]{2,}/gu) || [])
+    .filter((token) => token.length >= 2);
+}
+
+function characterBigrams(value) {
+  const compact = String(value || "").replace(/[^\p{L}\p{N}#]/gu, "");
+  if (compact.length < 2) return compact ? [compact] : [];
+  return Array.from({ length: compact.length - 1 }, (_, index) => compact.slice(index, index + 2));
+}
+
+function mergeSuggestionSources(a, b) {
+  const sources = [a, b].map((source) => String(source || "").trim()).filter(Boolean);
+  return [...new Set(sources)].slice(0, 2).join("；");
 }
 
 function parseTrackedItems(section, type) {
@@ -361,6 +474,21 @@ function parseTrackedItems(section, type) {
   }
 
   return items;
+}
+
+function readMarkdownSection(markdown, heading, nextHeadings = []) {
+  const lines = String(markdown || "").split("\n");
+  const start = lines.findIndex((line) => line.trim() === `## ${heading}`);
+  if (start === -1) return "";
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const match = lines[index].match(/^##\s+(.+)$/);
+    if (match && (!nextHeadings.length || nextHeadings.includes(match[1].trim()))) {
+      end = index;
+      break;
+    }
+  }
+  return lines.slice(start + 1, end).join("\n");
 }
 
 function formatTaskMarkdown(task) {

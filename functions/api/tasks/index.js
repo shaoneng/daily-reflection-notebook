@@ -41,6 +41,86 @@ export async function onRequestGet(context) {
   });
 }
 
+export async function onRequestStats(context) {
+  const authError = assertAuthorized(context);
+  if (authError) return authError;
+
+  const url = new URL(context.request.url);
+  const date = url.searchParams.get("date");
+  if (!validateDate(date)) return error("日期格式必须是 YYYY-MM-DD。");
+
+  const store = getStore(context);
+  const index = await readIndex(store);
+  const start30 = shiftDate(date, -29);
+  const start7 = shiftDate(date, -6);
+  const dates = index.dates
+    .filter((candidate) => candidate >= start30 && candidate <= date)
+    .sort((a, b) => a.localeCompare(b));
+
+  const days = [];
+  const taskHistory = new Map();
+  const totals30 = makeEmptyStatusCounts();
+  const totals7 = makeEmptyStatusCounts();
+
+  for (const candidate of dates) {
+    const markdown = (await store.get(noteKey(candidate))) || emptyMarkdown(candidate);
+    const tasks = readTasks(markdown);
+    const counts = countTasksByStatus(tasks);
+    addStatusCounts(totals30, counts);
+    if (candidate >= start7) addStatusCounts(totals7, counts);
+
+    for (const task of tasks) {
+      const key = normalizeTaskKey(task.content);
+      if (!key) continue;
+      const item = taskHistory.get(key) || {
+        content: task.content,
+        firstDate: candidate,
+        lastDate: candidate,
+        dates: [],
+        latestStatus: task.status,
+        source: task.source || task.carriedFrom || "",
+      };
+      item.lastDate = candidate;
+      item.latestStatus = task.status;
+      if (task.source || task.carriedFrom) item.source = task.source || task.carriedFrom;
+      item.dates.push(candidate);
+      taskHistory.set(key, item);
+    }
+
+    days.push({
+      date: candidate,
+      ...counts,
+      total: tasks.length,
+    });
+  }
+
+  const repeatedOpen = [...taskHistory.values()]
+    .filter((task) => (task.latestStatus === "todo" || task.latestStatus === "next") && task.dates.length >= 2)
+    .map((task) => ({
+      content: task.content,
+      firstDate: task.firstDate,
+      lastDate: task.lastDate,
+      days: task.dates.length,
+      ageDays: dayDistance(task.firstDate, date) + 1,
+      status: task.latestStatus,
+      source: task.source,
+    }))
+    .sort((a, b) => b.ageDays - a.ageDays || b.days - a.days)
+    .slice(0, 5);
+
+  return json({
+    date,
+    range: {
+      weekStart: start7,
+      monthStart: start30,
+    },
+    week: summarizeStatusCounts(totals7),
+    month: summarizeStatusCounts(totals30),
+    days,
+    repeatedOpen,
+  });
+}
+
 export async function onRequestPost(context) {
   const authError = assertAuthorized(context);
   if (authError) return authError;
@@ -195,6 +275,56 @@ async function readCarryoverTasks(store, date, currentMarkdown = "") {
 
 function normalizeTaskKey(content) {
   return String(content || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function makeEmptyStatusCounts() {
+  return { todo: 0, next: 0, done: 0, dropped: 0 };
+}
+
+function countTasksByStatus(tasks) {
+  const counts = makeEmptyStatusCounts();
+  for (const task of tasks) {
+    counts[normalizeTaskStatus(task.status)] += 1;
+  }
+  return counts;
+}
+
+function addStatusCounts(target, counts) {
+  for (const status of Object.keys(target)) target[status] += counts[status] || 0;
+}
+
+function summarizeStatusCounts(counts) {
+  const open = counts.todo + counts.next;
+  const total = open + counts.done + counts.dropped;
+  return {
+    ...counts,
+    open,
+    total,
+    completionRate: total ? Math.round((counts.done / total) * 100) : 0,
+  };
+}
+
+function shiftDate(date, offset) {
+  const parsed = parseDate(date);
+  parsed.setUTCDate(parsed.getUTCDate() + offset);
+  return formatDate(parsed);
+}
+
+function dayDistance(fromDate, toDate) {
+  return Math.max(0, Math.round((parseDate(toDate) - parseDate(fromDate)) / 86400000));
+}
+
+function parseDate(date) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function formatDate(date) {
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 export async function onRequestDelete(context) {
