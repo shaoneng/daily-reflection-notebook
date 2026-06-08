@@ -1,0 +1,1 @@
+@media (max-width:620px){.task-form{grid-template-columns:1fr}.task-form .primary-button{width:100%}.task-item{grid-template-columns:minmax(0,1fr) 36px}.task-item select{grid-column:1 / -1}.task-item p{padding-top:0}.task-item .delete-entry-button{grid-column:2;grid-row:2;justify-self:end}}
